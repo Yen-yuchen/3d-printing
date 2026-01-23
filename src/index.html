@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Upload → Download (Local)</title>
+    <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+<main class="app">
+    <header class="header">
+        <h1>Upload → Download</h1>
+        <p class="muted">No server. Your browser just holds the files in memory and hands them back to you.</p>
+    </header>
+
+    <section class="card">
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload files">
+            <div class="dropzone-inner">
+                <div class="big">Drop files here</div>
+                <div class="muted">or</div>
+                <label class="btn">
+                    Choose files
+                    <input id="fileInput" type="file" multiple accept = ".stl,.obj,.gltf,.glb,.3mf,.ply" hidden />
+                </label>
+            </div>
+        </div>
+
+        <div class="row">
+            <button id="clearBtn" class="btn btn-secondary" type="button">Clear list</button>
+            <div class="muted" id="statusOne"></div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="list-header">
+            <h2>Files</h2>
+            <div class="muted" id="count"></div>
+        </div>
+
+        <div id="empty" class="empty muted">No files yet.</div>
+
+        <ul id="fileList" class="file-list" aria-label="Uploaded files"></ul>
+    </section>
+
+    <footer class="footer muted">
+        Note: This is client-only. Refresh the page and your “uploads” vanish
+    </footer>
+</main>
+
+<!-- If you're not using a bundler, compile TS to JS and change this to app.js -->
+<script type="module" src="/app.ts"></script>
+</body>
+</html>
