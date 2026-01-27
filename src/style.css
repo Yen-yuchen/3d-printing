@@ -152,3 +152,37 @@ body {
     margin-top: 6px;
     font-size: 13px;
 }
+
+
+
+#three-container {
+    width: 100%;
+    height: 500px; 
+    background-color: #222; 
+    display: block;
+}
+/* tool */
+.toolbar {
+    display: flex;
+    gap: 10px;
+}
+
+/* buttom*/
+.btn-sm {
+    padding: 4px 12px;
+    font-size: 0.9rem;
+    background-color: #444;
+    color: white;
+    border: 1px solid #666;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-sm:hover {
+    background-color: #666;
+}
+
+.btn-sm:active {
+    background-color: #222;
+}

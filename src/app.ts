@@ -1,281 +1,268 @@
-type StoredFile = {
-    id: string;
-    file: File;        // keeps bytes in memory
-    addedAt: number;
-    details?: string;
-};
-const ALLOWED_EXIST = new Set(["stl", "obj", "gltf", "glb", "3mf", "ply"]);
-
-const fileInput = document.getElementById("fileInput") as HTMLInputElement;
-const dropzone = document.getElementById("dropzone") as HTMLDivElement;
-const fileList = document.getElementById("fileList") as HTMLUListElement;
-const empty = document.getElementById("empty") as HTMLDivElement;
-const statusOne = document.getElementById("statusOne") as HTMLDivElement;
-const count = document.getElementById("count") as HTMLDivElement;
-const clearBtn = document.getElementById("clearBtn") as HTMLButtonElement;
-
-const store: StoredFile[] = [];
-
-function uid(): string {
-    // good enough for a demo
-    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function formatBytes(bytes: number): string {
-    const units: string[] = ["B", "KB", "MB", "GB", "TB"];
-    let v: number = bytes;
-    let i: number = 0;
-    while (v >= 1024 && i < units.length - 1) {
-        v /= 1024;
-        i++;
-    }
-    return `${v.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
-}
-
-function setStatus(msg: string) {
-    statusOne.textContent = msg;
-    if (msg) {
-        window.setTimeout(() => {
-            if (statusOne.textContent === msg) statusOne.textContent = "";
-        }, 2500);
-    }
-}
-function getExt(name: string): string {
-    const i = name.lastIndexOf(".");
-    return i >= 0 ? name.slice(i + 1).toLowerCase() : "";
-}
-
-function isAllowed(file: File): boolean {
-    return ALLOWED_EXIST.has(getExt(file.name));
-}
-
-function render() {
-    fileList.innerHTML = "";
-
-    empty.style.display = store.length === 0 ? "block" : "none";
-    count.textContent = store.length === 0 ? "" : `${store.length} file(s)`;
-
-    for (const item of store) {
-        const li = document.createElement("li");
-        li.className = "file-item";
-
-        const top = document.createElement("div");
-        top.className = "file-top";
-
-        const name = document.createElement("div");
-        name.className = "file-name";
-        name.textContent = item.file.name;
-
-        const meta = document.createElement("div");
-        meta.className = "file-meta";
-        meta.textContent = `${formatBytes(item.file.size)} • ${item.file.type || "unknown type"} • ${new Date(item.addedAt).toLocaleString()}`;
-
-        if (item.details){
-            const details = document.createElement("div");
-            details.className = "file-details";
-            details.textContent = item.details;
-            top.appendChild(details);
-        }
-
-        top.appendChild(name);
-        top.appendChild(meta);
-
-        const actions = document.createElement("div");
-        actions.className = "file-actions";
-
-        const downloadBtn = document.createElement("button");
-        downloadBtn.className = "btn";
-        downloadBtn.type = "button";
-        downloadBtn.textContent = "Download";
-        downloadBtn.addEventListener("click", () => downloadFile(item));
-
-        const removeBtn = document.createElement("button");
-        removeBtn.className = "btn btn-danger";
-        removeBtn.type = "button";
-        removeBtn.textContent = "Remove";
-        removeBtn.addEventListener("click", () => removeFile(item.id));
-
-        actions.appendChild(downloadBtn);
-        actions.appendChild(removeBtn);
-
-        li.appendChild(top);
-        li.appendChild(actions);
-
-        fileList.appendChild(li);
-    }
-}
+import './style.css';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 
 
-async function summarizeModelFile(file: File): Promise<string> {
-    const ext = getExt(file.name);
 
-    if (ext === "stl") return summarizeSTL(file);
-    if (ext === "obj") return summarizeOBJ(file);
-    if (ext === "gltf") return summarizeGLTF(file);
-    if (ext === "glb") return summarizeGLB(file);
 
-    // 3MF/PLY are doable too, but they take a bit more code (ZIP/XML for 3MF).
-    return `${ext.toUpperCase()} file`;
-}
+let currentModel: THREE.Object3D | null = null;
 
-async function summarizeSTL(file: File): Promise<string> {
-    const buf = await file.arrayBuffer();
-    const dv = new DataView(buf);
+const container = document.getElementById('three-container') as HTMLElement;
+if (!container) throw new Error("找不到 #three-container");
 
-    // Binary STL: 80-byte header + uint32 triangle count at offset 80
-    if (buf.byteLength >= 84) {
-        const triCount = dv.getUint32(80, true);
-        const expected = 84 + triCount * 50;
-        // Heuristic: if size matches the binary layout, treat as binary STL
-        if (expected === buf.byteLength) {
-            return `STL (binary) • triangles: ${triCount.toLocaleString()}`;
+// scene setup
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x222222);
+
+const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+camera.position.set(0, 3, 5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.shadowMap.enabled = true;
+container.appendChild(renderer.domElement);
+
+// light setup
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(5, 10, 7);
+scene.add(dirLight);
+
+// controller setup
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+// Loaders
+const gltfLoader = new GLTFLoader();
+const stlLoader = new STLLoader();
+
+
+//  UI 
+const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+const fileList = document.getElementById('fileList') as HTMLUListElement;
+const emptyMsg = document.getElementById('empty') as HTMLElement;
+const clearBtn = document.getElementById('clearBtn') as HTMLButtonElement;
+const statusOne = document.getElementById('statusOne') as HTMLElement;
+
+// toolbar buttons
+const btnVisible = document.getElementById('btn-visible') as HTMLButtonElement;
+const btnWireframe = document.getElementById('btn-wireframe') as HTMLButtonElement;
+const btnReset = document.getElementById('btn-reset') as HTMLButtonElement;
+
+
+
+// reset App 
+function resetApp() {
+    // A. clear scene
+    for (let i = scene.children.length - 1; i >= 0; i--) {
+        const obj = scene.children[i];
+        // make sure not to remove lights or camera
+        if (obj.type === 'Mesh' || obj.type === 'Group') {
+            scene.remove(obj);
         }
     }
+    currentModel = null; 
 
-    // Otherwise assume ASCII STL
-    const text = await file.text();
-    const facetCount = (text.match(/\bfacet\s+normal\b/g) || []).length;
-    return `STL (ascii) • facets: ${facetCount.toLocaleString()}`;
+    // B. clear file list UI
+    if (fileList) fileList.innerHTML = '';
+    
+    // C. status & empty message
+    if (emptyMsg) emptyMsg.style.display = 'block';
+    if (statusOne) statusOne.textContent = '';
+    
+    // D. reset file input
+    if (fileInput) fileInput.value = '';
+    
+    // E. reset toolbar buttons
+    if (btnVisible) btnVisible.textContent = "Hide";
+    
+    console.log("App reset completed.");
 }
 
-async function summarizeOBJ(file: File): Promise<string> {
-    const text = await file.text();
+// update UI
+function addFileToUI(file: File) {
+    if (emptyMsg) emptyMsg.style.display = 'none';
 
-    let v = 0, vt = 0, vn = 0, f = 0;
+    const li = document.createElement('li');
+    li.className = 'file-item'; 
+    
+    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+    
+    li.innerHTML = `
+        <div class="file-info">
+            <strong>${file.name}</strong> 
+            <span class="muted">(${sizeMB} MB)</span>
+        </div>
+        <button class="btn-delete" style="color: #ff4d4d; border: none; background: none; cursor: pointer; font-weight: bold;">Delete</button>
+    `;
 
-    // Light parsing: count line prefixes
-    for (const line of text.split(/\r?\n/)) {
-        if (line.startsWith("v ")) v++;
-        else if (line.startsWith("vt ")) vt++;
-        else if (line.startsWith("vn ")) vn++;
-        else if (line.startsWith("f ")) f++;
+    // delete button event
+    const deleteBtn = li.querySelector('.btn-delete') as HTMLButtonElement;
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); 
+        resetApp(); 
+    });
+
+    if (fileList) fileList.appendChild(li);
+    if (statusOne) statusOne.textContent = `Loaded: ${file.name}`;
+}
+
+// model loaded callback
+function onModelLoaded(object: THREE.Object3D) {
+    
+    currentModel = object;
+    
+    
+    scene.add(object);
+    
+    
+    fitCameraToSelection(camera, controls, [object]);
+    
+    console.log("模型載入完成", object);
+}
+
+// unified file load handler
+function handleFileLoad(url: string, fileType: string, file: File) {
+    resetApp(); // clear previous
+    addFileToUI(file); // update UI
+
+    if (fileType === 'glb' || fileType === 'gltf') {
+        gltfLoader.load(url, (gltf) => {
+            onModelLoaded(gltf.scene);
+        }, undefined, (err) => console.error(err));
+
+    } else if (fileType === 'stl') {
+        stlLoader.load(url, (geometry) => {
+            // STL normally only has geometry, so we need to create a mesh
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x606060, 
+                roughness: 0.5, 
+                metalness: 0.1 
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            
+            // STL model adjustments
+            geometry.center(); 
+            mesh.rotation.x = -Math.PI / 2; 
+            
+            onModelLoaded(mesh);
+        }, undefined, (err) => console.error(err));
     }
-
-    return `OBJ • v:${v.toLocaleString()} vt:${vt.toLocaleString()} vn:${vn.toLocaleString()} f:${f.toLocaleString()}`;
-}
-
-async function summarizeGLTF(file: File): Promise<string> {
-    const json = JSON.parse(await file.text());
-    const meshes = Array.isArray(json.meshes) ? json.meshes.length : 0;
-    const materials = Array.isArray(json.materials) ? json.materials.length : 0;
-    const nodes = Array.isArray(json.nodes) ? json.nodes.length : 0;
-    return `GLTF • meshes:${meshes} materials:${materials} nodes:${nodes}`;
-}
-
-async function summarizeGLB(file: File): Promise<string> {
-    const buf = await file.arrayBuffer();
-    const dv = new DataView(buf);
-
-    // GLB header: magic "glTF" (0x46546C67), version, length
-    const magic = dv.getUint32(0, true);
-    if (magic !== 0x46546c67) return "GLB • invalid header";
-
-    const version = dv.getUint32(4, true);
-    const totalLen = dv.getUint32(8, true);
-
-    // First chunk: JSON
-    const jsonLen = dv.getUint32(12, true);
-    const jsonType = dv.getUint32(16, true); // should be "JSON" (0x4E4F534A)
-    if (jsonType !== 0x4e4f534a) return `GLB v${version} • missing JSON chunk`;
-
-    const jsonBytes = new Uint8Array(buf, 20, jsonLen);
-    const jsonText = new TextDecoder("utf-8").decode(jsonBytes);
-    const json = JSON.parse(jsonText);
-
-    const meshes = Array.isArray(json.meshes) ? json.meshes.length : 0;
-    const materials = Array.isArray(json.materials) ? json.materials.length : 0;
-    const nodes = Array.isArray(json.nodes) ? json.nodes.length : 0;
-
-    return `GLB v${version} • meshes:${meshes} materials:${materials} nodes:${nodes} • size:${formatBytes(totalLen)}`;
 }
 
 
-async function addFiles(files: FileList | File[]) {
-    const arr = Array.from(files);
-    if (arr.length === 0) return;
 
-    let added = 0;
-    let rejected = 0;
+// file listener
+if (fileInput) {
+    fileInput.addEventListener('change', (event) => {
+        const target = event.target as HTMLInputElement;
+        const file = target.files?.[0];
 
-    for (const file of arr) {
-        if (!isAllowed(file)) {
-            rejected++;
-            continue;
+        if (file) {
+            const url = URL.createObjectURL(file);
+            const fileName = file.name.toLowerCase();
+
+            if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
+                handleFileLoad(url, 'glb', file);
+            } else if (fileName.endsWith('.stl')) {
+                handleFileLoad(url, 'stl', file);
+            } else {
+                alert('only support .glb, .gltf, .stl types');
+                resetApp();
+            }
         }
-        const details = await summarizeModelFile(file).catch(() => undefined);
-        store.unshift({ id: uid(), file, addedAt: Date.now(), details: details });
-        added++;
-    }
-
-    if (added) setStatus(`Added ${added} file(s).`);
-    if (rejected) setStatus(`Rejected ${rejected} file(s) (unsupported type).`);
-
-    render();
+    });
 }
 
-function removeFile(id: string) {
-    const idx = store.findIndex(f => f.id === id);
-    if (idx >= 0) {
-        store.splice(idx, 1);
-        render();
-    }
+// clear button
+if (clearBtn) {
+    clearBtn.addEventListener('click', resetApp);
 }
 
-function clearAll() {
-    store.splice(0, store.length);
-    render();
-    setStatus("Cleared.");
+
+
+// function: Show/Hide
+if (btnVisible) {
+    btnVisible.addEventListener('click', () => {
+        if (currentModel) {
+            currentModel.visible = !currentModel.visible;
+            btnVisible.textContent = currentModel.visible ? " Hide" : " Show";
+        } else {
+            alert("Please upload model！");
+        }
+    });
 }
 
-function downloadFile(item: StoredFile) {
-    // Turn the File into a download link without uploading anywhere.
-    const url = URL.createObjectURL(item.file);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = item.file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    // Clean up the blob URL to avoid memory leaks.
-    URL.revokeObjectURL(url);
+// Wireframe
+if (btnWireframe) {
+    btnWireframe.addEventListener('click', () => {
+        if (currentModel) {
+            currentModel.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                    const mesh = child as THREE.Mesh;
+                    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                    materials.forEach((mat: any) => {
+                        if ('wireframe' in mat) {
+                            mat.wireframe = !mat.wireframe;
+                        }
+                    });
+                }
+            });
+        } else {
+            alert("please upload model！");
+        }
+    });
 }
 
-// Input change
-fileInput.addEventListener("change", () => {
-    if (fileInput.files) addFiles(fileInput.files);
-    fileInput.value = ""; // allow re-selecting same file
+// Reset View
+if (btnReset) {
+    btnReset.addEventListener('click', () => {
+        controls.reset();
+        if (currentModel) {
+            fitCameraToSelection(camera, controls, [currentModel]);
+        } else {
+            camera.position.set(0, 3, 5);
+            camera.lookAt(0, 0, 0);
+        }
+    });
+}
+
+// window resize handler
+window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
 });
 
-// // Drag and drop
-// dropzone.addEventListener("dragover", (e) => {
-//     e.preventDefault();
-//     dropzone.classList.add("dragover");
-// });
-// dropzone.addEventListener("dragleave", () => {
-//     dropzone.classList.remove("dragover");
-// });
-// dropzone.addEventListener("drop", (e) => {
-//     e.preventDefault();
-//     dropzone.classList.remove("dragover");
-//     const dt = e.dataTransfer;
-//     if (dt?.files) addFiles(dt.files);
-// });
+// animation loop
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+animate();
 
-// Keyboard accessibility: pressing Enter/Space opens file picker
-// dropzone.addEventListener("keydown", (e) => {
-//     if (e.key === "Enter" || e.key === " ") {
-//         e.preventDefault();
-//         fileInput.click();
-//     }
-// });
-dropzone.addEventListener("click", (e) => {
-    if (e.target === dropzone) {
-        fileInput.click();
-    }
-});
-clearBtn.addEventListener("click", clearAll);
+// auto fit camera to selection
+function fitCameraToSelection(camera: THREE.PerspectiveCamera, controls: OrbitControls, selection: THREE.Object3D[], fitOffset = 1.2) {
+    const box = new THREE.Box3();
+    for (const object of selection) box.expandByObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxSize = Math.max(size.x, size.y, size.z);
+    const fitHeightDistance = maxSize / (2 * Math.atan(Math.PI * camera.fov / 360));
+    const fitWidthDistance = fitHeightDistance / camera.aspect;
+    const distance = fitOffset * Math.max(fitHeightDistance, fitWidthDistance);
+    const direction = controls.target.clone().sub(camera.position).normalize().multiplyScalar(distance);
 
-render();
-
+    controls.maxDistance = distance * 10;
+    controls.target.copy(center);
+    camera.near = distance / 100;
+    camera.far = distance * 100;
+    camera.updateProjectionMatrix();
+    camera.position.copy(controls.target).sub(direction);
+    controls.update();
+}

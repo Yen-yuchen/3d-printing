@@ -42,12 +42,30 @@
         <ul id="fileList" class="file-list" aria-label="Uploaded files"></ul>
     </section>
 
+    </section>
+
+    <section class="card">
+        <div class="list-header">
+            <h2>3D Preview</h2>
+        </div>
+        <div class="toolbar">
+        <button id="btn-visible" class="btn btn-sm"> Hide</button>
+        <button id="btn-wireframe" class="btn btn-sm"> Wireframe</button>
+        <button id="btn-reset" class="btn btn-sm">↺ Reset View</button>
+    </div>
+        <div id="three-container"></div>
+    </section>    
+
     <footer class="footer muted">
         Note: This is client-only. Refresh the page and your “uploads” vanish
     </footer>
 </main>
 
+
+
+
 <!-- If you're not using a bundler, compile TS to JS and change this to app.js -->
-<script type="module" src="/src/app.js"></script>
+
+<script type="module" src="app.ts"></script>
 </body>
 </html>
