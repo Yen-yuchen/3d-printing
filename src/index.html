@@ -1,73 +1,57 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Upload → Download (Local)</title>
-    <link rel="stylesheet" href="./style.css" />
+    <title>Canvas Viewer</title>
+    <link rel="stylesheet" href="/style.css" />
 </head>
+
 <body>
-<main class="app">
-    <header class="header">
-        <h1>Upload → Download</h1>
-        <p class="muted">No server. Your browser just holds the files in memory and hands them back to you.</p>
-    </header>
+<div id="app">
+    <aside id="sidebar">
+        <h2>Settings</h2>
 
-    <section class="card">
-        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload files">
-            <div class="dropzone-inner">
-                <div class="big">Drop files here</div>
-                <div class="muted">or</div>
-                <label class="btn">
-                    Choose files
-                    <input id="fileInput" type="file" multiple accept = ".stl,.obj,.gltf,.glb,.3mf,.ply" hidden />
-                </label>
-            </div>
+        <label class="btn upload-btn">
+            Upload model (single .glb/.stl/.obj or a .gltf package)
+            <!--
+              For .gltf packages, select the .gltf AND all referenced files (.bin/.png/.jpg/etc)
+              in the same upload selection.
+            -->
+            <input id="fileInput" type="file" accept=".stl,.obj,.gltf,.glb,.bin,.png,.jpg,.jpeg" multiple hidden />
+        </label>
+
+        <div id="status" class="muted">No file loaded.</div>
+
+        <div class="toggle-row">
+            <label class="toggle">
+                <input id="gridToggle" type="checkbox" checked />
+                Show grid
+            </label>
+
+            <label class="toggle">
+                <input id="modelToggle" type="checkbox" checked />
+                Show model
+            </label>
+
+            <label class="toggle">
+                <input id="wireToggle" type="checkbox" />
+                Wireframe
+            </label>
         </div>
 
-        <div class="row">
-            <button id="clearBtn" class="btn btn-secondary" type="button">Clear list</button>
-            <div class="muted" id="statusOne"></div>
-        </div>
-    </section>
-
-    <section class="card">
-        <div class="list-header">
-            <h2>Files</h2>
-            <div class="muted" id="count"></div>
-        </div>
-
-        <div id="empty" class="empty muted">No files yet.</div>
-
-        <ul id="fileList" class="file-list" aria-label="Uploaded files"></ul>
-    </section>
-
-    </section>
-
-    <section class="card">
-        <div class="list-header">
-            <h2>3D Preview</h2>
-        </div>
-        <div class="toolbar">
-        <button id="btn-visible" class="btn btn-sm"> Hide</button>
-        <button id="btn-wireframe" class="btn btn-sm"> Wireframe</button>
-        <button id="btn-reset" class="btn btn-sm">↺ Reset View</button>
+        <label>
+            Scale
+            <input id="scale" type="range" min="10" max="300" value="100" />
+        </label>
         <button id="btn-simulation" class="btn btn-sm">Simulate Deformation</button>
         <button id="btn-settings" class="btn btn-sm">Constraints Settings</button>
-    </div>
-        <div id="three-container"></div>
-    </section>    
 
-    <footer class="footer muted">
-        Note: This is client-only. Refresh the page and your “uploads” vanish
-    </footer>
-</main>
+        <button id="resetCam">Reset Camera</button>
+    </aside>
 
+    <main id="viewer"></main>
+</div>
 
-
-
-<!-- If you're not using a bundler, compile TS to JS and change this to app.js -->
-
-<script type="module" src="app.ts"></script>
+<script type="module" src="/app.ts"></script>
 </body>
 </html>

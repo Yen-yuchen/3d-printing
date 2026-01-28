@@ -1,15 +1,15 @@
 :root {
     --bg: #0b0d12;
-    --card: #121826;
+    --panel: #111827;
     --text: #e8eefc;
     --muted: #9aa7c2;
     --border: #23304a;
     --accent: #6ea8fe;
-    --danger: #ff6b6b;
 }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
+
 body {
     margin: 0;
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
@@ -17,60 +17,46 @@ body {
     color: var(--text);
 }
 
-.app {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 28px 16px 48px;
-    display: grid;
-    gap: 16px;
-}
-
-.header h1 {
-    margin: 0 0 8px;
-    font-size: 28px;
-}
 .muted { color: var(--muted); }
 
-.card {
-    background: color-mix(in oklab, var(--card), black 10%);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 16px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
-}
-
-.dropzone {
-    border: 2px dashed color-mix(in oklab, var(--border), white 10%);
-    border-radius: 14px;
-    padding: 18px;
-    outline: none;
-    transition: 160ms ease;
-    background: rgba(255,255,255,0.02);
-}
-.dropzone:focus,
-.dropzone.dragover {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px rgba(110,168,254,0.15);
-}
-.dropzone-inner {
-    min-height: 120px;
+#app {
+    height: 100%;
     display: grid;
-    place-items: center;
-    gap: 10px;
-    text-align: center;
-}
-.big { font-size: 18px; font-weight: 650; }
-
-.row {
-    margin-top: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
+    grid-template-columns: 320px 1fr;
 }
 
-.btn {
+#sidebar {
+    padding: 16px;
+    border-right: 1px solid var(--border);
+    background: color-mix(in oklab, var(--panel), black 10%);
+    overflow: auto;
+}
+
+#sidebar h2 {
+    margin: 0 0 14px;
+    font-size: 18px;
+}
+
+#sidebar label {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+#status {
+    margin: 10px 0 14px;
+}
+
+/* Viewer takes remaining space */
+#viewer {
+    position: relative;
+    min-width: 0;
+    height: 100%;
+}
+
+/* Button styling (upload + reset) */
+.btn,
+button#resetCam {
     border: 1px solid var(--border);
     background: color-mix(in oklab, var(--accent), black 70%);
     color: var(--text);
@@ -84,105 +70,33 @@ body {
     user-select: none;
     transition: 140ms ease;
 }
-.btn:hover { transform: translateY(-1px); }
-.btn:active { transform: translateY(0px); }
 
-.btn-secondary {
-    background: transparent;
-}
-.btn-danger {
-    border-color: color-mix(in oklab, var(--danger), black 50%);
-    background: color-mix(in oklab, var(--danger), black 78%);
-}
+.btn:hover,
+button#resetCam:hover { transform: translateY(-1px); }
 
-.list-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-}
-.list-header h2 { margin: 0; font-size: 18px; }
+.btn:active,
+button#resetCam:active { transform: translateY(0px); }
 
-.empty {
-    padding: 12px 6px;
+.upload-btn {
+    width: fit-content;
 }
 
-.file-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+/* Toggles */
+.toggle-row {
     display: grid;
     gap: 10px;
+    margin: 10px 0 14px;
 }
 
-.file-item {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px;
-    display: grid;
-    gap: 10px;
-    background: rgba(255,255,255,0.02);
-}
-
-.file-top {
-    display: flex;
-    gap: 10px;
+.toggle {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-}
-.file-name {
-    font-weight: 650;
-    word-break: break-word;
-}
-.file-meta {
-    color: var(--muted);
-    font-size: 13px;
-}
-
-.file-actions {
-    display: flex;
     gap: 10px;
-    flex-wrap: wrap;
+    margin: 0;
+    font-weight: 600;
 }
 
-.footer {
-    text-align: center;
-    margin-top: 6px;
-    font-size: 13px;
-}
-
-
-
-#three-container {
-    width: 100%;
-    height: 500px; 
-    background-color: #222; 
-    display: block;
-}
-/* tool */
-.toolbar {
-    display: flex;
-    gap: 10px;
-}
-
-/* buttom*/
-.btn-sm {
-    padding: 4px 12px;
-    font-size: 0.9rem;
-    background-color: #444;
-    color: white;
-    border: 1px solid #666;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.btn-sm:hover {
-    background-color: #666;
-}
-
-.btn-sm:active {
-    background-color: #222;
+.toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
 }

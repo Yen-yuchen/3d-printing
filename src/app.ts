@@ -1,268 +1,416 @@
-import './style.css';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 
+const viewer = document.getElementById("viewer") as HTMLDivElement;
 
-
-
-let currentModel: THREE.Object3D | null = null;
-
-const container = document.getElementById('three-container') as HTMLElement;
-if (!container) throw new Error("找不到 #three-container");
-
-// scene setup
+// ---------- Scene ----------
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x222222);
+scene.background = new THREE.Color(0x111111);
 
-const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-camera.position.set(0, 3, 5);
+// ---------- Camera ----------
+const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+camera.position.set(2, 2, 4);
 
+// ---------- Renderer ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(container.clientWidth, container.clientHeight);
-renderer.shadowMap.enabled = true;
-container.appendChild(renderer.domElement);
+renderer.setPixelRatio(window.devicePixelRatio);
+viewer.appendChild(renderer.domElement);
 
-// light setup
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-dirLight.position.set(5, 10, 7);
-scene.add(dirLight);
-
-// controller setup
+// ---------- Controls ----------
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-// Loaders
-const gltfLoader = new GLTFLoader();
+// ---------- Lights ----------
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const dir = new THREE.DirectionalLight(0xffffff, 1);
+dir.position.set(5, 10, 5);
+scene.add(dir);
+
+// ---------- Demo Mesh (until model is loaded) ----------
+const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color: "orange" })
+);
+scene.add(cube);
+
+// ---------- Helpers (toggleable) ----------
+const gridHelper = new THREE.GridHelper(10, 10);
+const axesHelper = new THREE.AxesHelper(2);
+scene.add(gridHelper);
+scene.add(axesHelper);
+
+// ---------- Current Model ----------
+let currentModel: THREE.Object3D | null = null;
+
+// ---------- UI ----------
+const fileInput = document.getElementById("fileInput") as HTMLInputElement | null;
+const statusEl = document.getElementById("status") as HTMLDivElement | null;
+
+const gridToggle = document.getElementById("gridToggle") as HTMLInputElement | null;
+const modelToggle = document.getElementById("modelToggle") as HTMLInputElement | null;
+const wireToggle = document.getElementById("wireToggle") as HTMLInputElement | null;
+const scaleSlider = document.getElementById("scale") as HTMLInputElement | null;
+
+const resetCamBtn = document.getElementById("resetCam") as HTMLButtonElement | null;
+
+// ---------- Loaders ----------
+// Note: for .gltf packages (gltf + .bin + textures), we create a loader with a custom LoadingManager
+// so dependent files can be resolved from the user's uploaded FileList.
 const stlLoader = new STLLoader();
+const objLoader = new OBJLoader();
 
-
-//  UI 
-const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-const fileList = document.getElementById('fileList') as HTMLUListElement;
-const emptyMsg = document.getElementById('empty') as HTMLElement;
-const clearBtn = document.getElementById('clearBtn') as HTMLButtonElement;
-const statusOne = document.getElementById('statusOne') as HTMLElement;
-
-// toolbar buttons
-const btnVisible = document.getElementById('btn-visible') as HTMLButtonElement;
-const btnWireframe = document.getElementById('btn-wireframe') as HTMLButtonElement;
-const btnReset = document.getElementById('btn-reset') as HTMLButtonElement;
-
-
-
-// reset App 
-function resetApp() {
-    // A. clear scene
-    for (let i = scene.children.length - 1; i >= 0; i--) {
-        const obj = scene.children[i];
-        // make sure not to remove lights or camera
-        if (obj.type === 'Mesh' || obj.type === 'Group') {
-            scene.remove(obj);
-        }
-    }
-    currentModel = null; 
-
-    // B. clear file list UI
-    if (fileList) fileList.innerHTML = '';
-    
-    // C. status & empty message
-    if (emptyMsg) emptyMsg.style.display = 'block';
-    if (statusOne) statusOne.textContent = '';
-    
-    // D. reset file input
-    if (fileInput) fileInput.value = '';
-    
-    // E. reset toolbar buttons
-    if (btnVisible) btnVisible.textContent = "Hide";
-    
-    console.log("App reset completed.");
+// ---------- Helpers ----------
+function setStatus(msg: string) {
+    if (statusEl) statusEl.textContent = msg;
 }
 
-// update UI
-function addFileToUI(file: File) {
-    if (emptyMsg) emptyMsg.style.display = 'none';
-
-    const li = document.createElement('li');
-    li.className = 'file-item'; 
-    
-    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-    
-    li.innerHTML = `
-        <div class="file-info">
-            <strong>${file.name}</strong> 
-            <span class="muted">(${sizeMB} MB)</span>
-        </div>
-        <button class="btn-delete" style="color: #ff4d4d; border: none; background: none; cursor: pointer; font-weight: bold;">Delete</button>
-    `;
-
-    // delete button event
-    const deleteBtn = li.querySelector('.btn-delete') as HTMLButtonElement;
-    deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); 
-        resetApp(); 
-    });
-
-    if (fileList) fileList.appendChild(li);
-    if (statusOne) statusOne.textContent = `Loaded: ${file.name}`;
+function getTargetObject(): THREE.Object3D {
+    return currentModel ?? cube;
 }
 
-// model loaded callback
-function onModelLoaded(object: THREE.Object3D) {
-    
-    currentModel = object;
-    
-    
-    scene.add(object);
-    
-    
-    fitCameraToSelection(camera, controls, [object]);
-    
-    console.log("模型載入完成", object);
+function applyHelperVisibility() {
+    const showGrid = gridToggle?.checked ?? true;
+    gridHelper.visible = showGrid;
+    axesHelper.visible = showGrid; // tied to grid; can split later if you want
 }
 
-// unified file load handler
-function handleFileLoad(url: string, fileType: string, file: File) {
-    resetApp(); // clear previous
-    addFileToUI(file); // update UI
+function applyModelVisibility() {
+    const showModel = modelToggle?.checked ?? true;
 
-    if (fileType === 'glb' || fileType === 'gltf') {
-        gltfLoader.load(url, (gltf) => {
-            onModelLoaded(gltf.scene);
-        }, undefined, (err) => console.error(err));
+    if (currentModel) currentModel.visible = showModel;
 
-    } else if (fileType === 'stl') {
-        stlLoader.load(url, (geometry) => {
-            // STL normally only has geometry, so we need to create a mesh
-            const material = new THREE.MeshStandardMaterial({ 
-                color: 0x606060, 
-                roughness: 0.5, 
-                metalness: 0.1 
+    // If no model loaded, cube acts like "the model"
+    cube.visible = !currentModel && showModel;
+}
+
+function applyScaleFromSlider() {
+    const sliderValue = Number(scaleSlider?.value ?? 100); // 100 = normal
+    const factor = sliderValue / 100;
+
+    const target = getTargetObject();
+    target.scale.set(factor, factor, factor);
+}
+
+function setWireframe(object: THREE.Object3D, enabled: boolean) {
+    object.traverse((child: any) => {
+        if (!child || !child.isMesh) return;
+
+        const mat = child.material;
+        if (Array.isArray(mat)) {
+            mat.forEach((m) => {
+                if (m) m.wireframe = enabled;
             });
-            const mesh = new THREE.Mesh(geometry, material);
-            
-            // STL model adjustments
-            geometry.center(); 
-            mesh.rotation.x = -Math.PI / 2; 
-            
-            onModelLoaded(mesh);
-        }, undefined, (err) => console.error(err));
+        } else if (mat) {
+            mat.wireframe = enabled;
+        }
+    });
+}
+
+function applyWireframe() {
+    const enabled = wireToggle?.checked ?? false;
+    const target = getTargetObject();
+    setWireframe(target, enabled);
+}
+
+function clearCurrentModel() {
+    if (currentModel) {
+        scene.remove(currentModel);
+
+        // Best-effort GPU cleanup
+        currentModel.traverse((child: any) => {
+            if (child?.geometry) child.geometry.dispose?.();
+            const mat = child?.material;
+            if (Array.isArray(mat)) mat.forEach((m) => m?.dispose?.());
+            else mat?.dispose?.();
+        });
+
+        currentModel = null;
     }
+
+    // Show cube again (respect toggles)
+    applyModelVisibility();
+    applyScaleFromSlider();
+    applyWireframe();
 }
 
+function fitCameraToObject(object: THREE.Object3D, fitOffset = 1.2) {
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
 
+    const maxSize = Math.max(size.x, size.y, size.z);
+    if (!Number.isFinite(maxSize) || maxSize <= 0) return;
 
-// file listener
-if (fileInput) {
-    fileInput.addEventListener('change', (event) => {
-        const target = event.target as HTMLInputElement;
-        const file = target.files?.[0];
+    const fitHeightDistance = maxSize / (2 * Math.atan((Math.PI * camera.fov) / 360));
+    const fitWidthDistance = fitHeightDistance / camera.aspect;
+    const distance = fitOffset * Math.max(fitHeightDistance, fitWidthDistance);
 
-        if (file) {
-            const url = URL.createObjectURL(file);
-            const fileName = file.name.toLowerCase();
+    controls.target.copy(center);
 
-            if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
-                handleFileLoad(url, 'glb', file);
-            } else if (fileName.endsWith('.stl')) {
-                handleFileLoad(url, 'stl', file);
-            } else {
-                alert('only support .glb, .gltf, .stl types');
-                resetApp();
-            }
-        }
-    });
-}
-
-// clear button
-if (clearBtn) {
-    clearBtn.addEventListener('click', resetApp);
-}
-
-
-
-// function: Show/Hide
-if (btnVisible) {
-    btnVisible.addEventListener('click', () => {
-        if (currentModel) {
-            currentModel.visible = !currentModel.visible;
-            btnVisible.textContent = currentModel.visible ? " Hide" : " Show";
-        } else {
-            alert("Please upload model！");
-        }
-    });
-}
-
-// Wireframe
-if (btnWireframe) {
-    btnWireframe.addEventListener('click', () => {
-        if (currentModel) {
-            currentModel.traverse((child) => {
-                if ((child as THREE.Mesh).isMesh) {
-                    const mesh = child as THREE.Mesh;
-                    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                    materials.forEach((mat: any) => {
-                        if ('wireframe' in mat) {
-                            mat.wireframe = !mat.wireframe;
-                        }
-                    });
-                }
-            });
-        } else {
-            alert("please upload model！");
-        }
-    });
-}
-
-// Reset View
-if (btnReset) {
-    btnReset.addEventListener('click', () => {
-        controls.reset();
-        if (currentModel) {
-            fitCameraToSelection(camera, controls, [currentModel]);
-        } else {
-            camera.position.set(0, 3, 5);
-            camera.lookAt(0, 0, 0);
-        }
-    });
-}
-
-// window resize handler
-window.addEventListener('resize', () => {
-    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.near = distance / 100;
+    camera.far = distance * 100;
     camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
+
+    const direction = new THREE.Vector3(1, 1, 1).normalize();
+    camera.position.copy(center).add(direction.multiplyScalar(distance));
+
+    controls.update();
+}
+
+function baseName(pathLike: string): string {
+    // Handles urls like "textures/wood.png" or "C:\\foo\\bar.bin"
+    const cleaned = decodeURIComponent(pathLike).replace(/\\/g, "/");
+    const parts = cleaned.split("/");
+    return parts[parts.length - 1] || cleaned;
+}
+
+function collectExternalUris(gltfJson: any): Set<string> {
+    const uris = new Set<string>();
+
+    const addUri = (uri?: string) => {
+        if (!uri) return;
+        // data: URIs are embedded; not external.
+        if (uri.startsWith("data:")) return;
+        uris.add(baseName(uri));
+    };
+
+    if (Array.isArray(gltfJson?.buffers)) {
+        for (const b of gltfJson.buffers) addUri(b?.uri);
+    }
+
+    if (Array.isArray(gltfJson?.images)) {
+        for (const img of gltfJson.images) addUri(img?.uri);
+    }
+
+    return uris;
+}
+
+async function loadSelection(files: FileList) {
+    const selected = Array.from(files);
+    if (selected.length === 0) return;
+
+    // Prefer a single "main" model file.
+    const gltfFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".gltf"));
+    const glbFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".glb"));
+    const stlFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".stl"));
+    const objFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".obj"));
+
+    // ---- glTF JSON package (.gltf + external .bin/.png/etc) ----
+    if (gltfFiles.length > 0) {
+        if (gltfFiles.length !== 1) {
+            setStatus("Please select exactly one .gltf file (plus its associated .bin/.png/etc files).");
+            return;
+        }
+
+        const gltfFile = gltfFiles[0];
+        let gltfJson: any;
+        try {
+            gltfJson = JSON.parse(await gltfFile.text());
+        } catch (e) {
+            console.error(e);
+            setStatus("That .gltf file is not valid JSON.");
+            return;
+        }
+
+        const required = collectExternalUris(gltfJson);
+        const allowed = new Set<string>([gltfFile.name, ...required]);
+
+        // Rule the user asked for:
+        // If ANY selected file doesn't belong to the .gltf package, don't load anything.
+        const extra = selected
+            .map((f) => f.name)
+            .filter((name) => !allowed.has(name));
+        if (extra.length > 0) {
+            setStatus(
+                `Selection contains unrelated file(s): ${extra.join(", ")}. ` +
+                "Please select ONLY the .gltf and its referenced files."
+            );
+            return;
+        }
+
+        // Ensure all referenced external files are present.
+        const missing = Array.from(required).filter((name) => !selected.some((f) => f.name === name));
+        if (missing.length > 0) {
+            setStatus(
+                `Missing required file(s): ${missing.join(", ")}. ` +
+                "Select the .gltf AND all required .bin/.png/etc in the same upload."
+            );
+            return;
+        }
+
+        // Build blob URLs for everything in the package.
+        const fileMap = new Map<string, string>();
+        const urlsToRevoke: string[] = [];
+        for (const f of selected) {
+            const u = URL.createObjectURL(f);
+            fileMap.set(f.name, u);
+            urlsToRevoke.push(u);
+        }
+
+        const manager = new THREE.LoadingManager();
+        manager.setURLModifier((requestedUrl) => {
+            const key = baseName(requestedUrl);
+            return fileMap.get(key) ?? requestedUrl;
+        });
+
+        const gltfLoader = new GLTFLoader(manager);
+        const mainUrl = fileMap.get(gltfFile.name)!;
+
+        const onLoaded = (object: THREE.Object3D) => {
+            clearCurrentModel();
+            currentModel = object;
+            scene.add(object);
+            cube.visible = false;
+
+            applyModelVisibility();
+            applyHelperVisibility();
+            applyScaleFromSlider();
+            applyWireframe();
+            fitCameraToObject(object);
+
+            setStatus(`Loaded: ${gltfFile.name}`);
+            urlsToRevoke.forEach(URL.revokeObjectURL);
+        };
+
+        const onError = (err: any) => {
+            console.error(err);
+            setStatus(`Failed to load: ${gltfFile.name}`);
+            urlsToRevoke.forEach(URL.revokeObjectURL);
+        };
+
+        gltfLoader.load(mainUrl, (gltf) => onLoaded(gltf.scene), undefined, onError);
+        return;
+    }
+
+    // ---- Single-file formats (.glb/.stl/.obj) ----
+    const mainSingle = glbFiles[0] ?? stlFiles[0] ?? objFiles[0];
+    if (!mainSingle) {
+        setStatus("Unsupported selection. Choose a .glb/.stl/.obj, or a .gltf package.");
+        return;
+    }
+
+    // Enforce the same “no unrelated files” idea for non-.gltf uploads:
+    // if you picked a single-file format, do not allow extra files.
+    if (selected.length !== 1) {
+        setStatus(`"${mainSingle.name}" is a single-file format. Please select only that one file.`);
+        return;
+    }
+
+    const name = mainSingle.name.toLowerCase();
+    const url = URL.createObjectURL(mainSingle);
+
+    const onLoaded = (object: THREE.Object3D) => {
+        clearCurrentModel();
+
+        currentModel = object;
+        scene.add(object);
+        cube.visible = false;
+
+        applyModelVisibility();
+        applyHelperVisibility();
+        applyScaleFromSlider();
+        applyWireframe();
+        fitCameraToObject(object);
+
+        setStatus(`Loaded: ${mainSingle.name}`);
+        URL.revokeObjectURL(url);
+    };
+
+    const onError = (err: any) => {
+        console.error(err);
+        setStatus(`Failed to load: ${mainSingle.name}`);
+        URL.revokeObjectURL(url);
+    };
+
+    if (name.endsWith(".glb")) {
+        const gltfLoader = new GLTFLoader();
+        gltfLoader.load(url, (gltf) => onLoaded(gltf.scene), undefined, onError);
+    } else if (name.endsWith(".stl")) {
+        stlLoader.load(
+            url,
+            (geometry) => {
+                geometry.center();
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0x9a9a9a,
+                    roughness: 0.55,
+                    metalness: 0.1,
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.rotation.x = -Math.PI / 2;
+                onLoaded(mesh);
+            },
+            undefined,
+            onError
+        );
+    } else if (name.endsWith(".obj")) {
+        objLoader.load(url, (obj) => onLoaded(obj), undefined, onError);
+    } else {
+        setStatus("Unsupported file. Use .glb, .gltf (+ package files), .stl, or .obj");
+        URL.revokeObjectURL(url);
+    }
+}
+
+// ---------- Resize ----------
+function resizeToViewer() {
+    const w = viewer.clientWidth;
+    const h = viewer.clientHeight;
+
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+}
+
+resizeToViewer();
+window.addEventListener("resize", resizeToViewer);
+new ResizeObserver(resizeToViewer).observe(viewer);
+
+// ---------- UI Hooks ----------
+fileInput?.addEventListener("change", (event) => {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    // Load based on the entire selection (supports .gltf packages).
+    loadSelection(input.files);
+
+    // Allow selecting the same files again without needing to pick something else first.
+    input.value = "";
 });
 
-// animation loop
+gridToggle?.addEventListener("change", applyHelperVisibility);
+
+modelToggle?.addEventListener("change", () => {
+    applyModelVisibility();
+});
+
+wireToggle?.addEventListener("change", () => {
+    applyWireframe();
+});
+
+scaleSlider?.addEventListener("input", () => {
+    applyScaleFromSlider();
+    // Keep wireframe consistent (in case you swap targets later)
+    applyWireframe();
+});
+
+resetCamBtn?.addEventListener("click", () => {
+    camera.position.set(2, 2, 4);
+    controls.target.set(0, 0, 0);
+    controls.update();
+});
+
+// Apply initial states
+applyHelperVisibility();
+applyModelVisibility();
+applyScaleFromSlider();
+applyWireframe();
+
+// ---------- Render Loop ----------
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
 }
 animate();
-
-// auto fit camera to selection
-function fitCameraToSelection(camera: THREE.PerspectiveCamera, controls: OrbitControls, selection: THREE.Object3D[], fitOffset = 1.2) {
-    const box = new THREE.Box3();
-    for (const object of selection) box.expandByObject(object);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const maxSize = Math.max(size.x, size.y, size.z);
-    const fitHeightDistance = maxSize / (2 * Math.atan(Math.PI * camera.fov / 360));
-    const fitWidthDistance = fitHeightDistance / camera.aspect;
-    const distance = fitOffset * Math.max(fitHeightDistance, fitWidthDistance);
-    const direction = controls.target.clone().sub(camera.position).normalize().multiplyScalar(distance);
-
-    controls.maxDistance = distance * 10;
-    controls.target.copy(center);
-    camera.near = distance / 100;
-    camera.far = distance * 100;
-    camera.updateProjectionMatrix();
-    camera.position.copy(controls.target).sub(direction);
-    controls.update();
-}
