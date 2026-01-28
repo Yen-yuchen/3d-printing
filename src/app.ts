@@ -18,6 +18,11 @@ camera.position.set(2, 2, 4);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 viewer.appendChild(renderer.domElement);
+const canvas = renderer.domElement;
+canvas.style.display = "block";
+canvas.style.width = "100%";
+canvas.style.height = "100%";
+
 
 // ---------- Controls ----------
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -406,6 +411,30 @@ applyHelperVisibility();
 applyModelVisibility();
 applyScaleFromSlider();
 applyWireframe();
+
+// if "infinite" rerendering keeps occurring, uncomment below and replace render loop with this
+// const ro = new ResizeObserver(resizeToViewer);
+// ro.observe(viewer);
+//
+// let rafId = 0;
+// function animate() {
+//     rafId = requestAnimationFrame(animate);
+//     controls.update();
+//     renderer.render(scene, camera);
+// }
+// animate();
+//
+// // ---- Vite HMR cleanup ----
+// if (import.meta.hot) {
+//     import.meta.hot.dispose(() => {
+//         cancelAnimationFrame(rafId);
+//         ro.disconnect();
+//         controls.dispose();
+//         renderer.dispose();
+//         renderer.domElement.remove();
+//     });
+// }
+
 
 // ---------- Render Loop ----------
 function animate() {
