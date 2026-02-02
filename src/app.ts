@@ -3,6 +3,10 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+import { ThreeMFLoader } from "three/examples/jsm/Addons.js";
+
+
+
 
 const viewer = document.getElementById("viewer") as HTMLDivElement;
 
@@ -32,7 +36,7 @@ controls.enableDamping = true;
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 const dir = new THREE.DirectionalLight(0xffffff, 1);
 dir.position.set(5, 10, 5);
-scene.add(dir);
+camera.add(dir);
 
 // ---------- Demo Mesh (until model is loaded) ----------
 const cube = new THREE.Mesh(
@@ -61,13 +65,47 @@ const scaleSlider = document.getElementById("scale") as HTMLInputElement | null;
 
 const resetCamBtn = document.getElementById("resetCam") as HTMLButtonElement | null;
 
+// ---------- Mouse Selection ----------
+const pickPosition = new THREE.Vector2(0,0)
+clearPickPosition();
+
+class PickHelper {
+    raycaster: THREE.Raycaster;
+    intersection: THREE.Intersection | null;
+
+    constructor(){
+        this.raycaster = new THREE.Raycaster();
+        this.intersection = null;
+    }
+    pick(normalizedPosition: THREE.Vector2, scene: THREE.Scene, camera: THREE.Camera){
+			this.raycaster.setFromCamera(normalizedPosition, camera );
+			const intersectedObjects = this.raycaster.intersectObjects( scene.children );
+			if (intersectedObjects.length) {
+
+				this.intersection = intersectedObjects[0];
+            }
+
+            if(this.intersection?.face){
+                console.log(this.intersection);
+            }
+    
+    }
+
+}
+
+window.addEventListener('mousemove', setPickPosition);
+window.addEventListener('mouseout', clearPickPosition);
+window.addEventListener('mouseleave', clearPickPosition);
 // ---------- Loaders ----------
 // Note: for .gltf packages (gltf + .bin + textures), we create a loader with a custom LoadingManager
 // so dependent files can be resolved from the user's uploaded FileList.
 const stlLoader = new STLLoader();
 const objLoader = new OBJLoader();
 
-// ---------- Helpers ----------
+
+
+
+// ---------- Helpers ---------
 function setStatus(msg: string) {
     if (statusEl) statusEl.textContent = msg;
 }
@@ -191,6 +229,25 @@ function collectExternalUris(gltfJson: any): Set<string> {
     }
 
     return uris;
+}
+
+function getCanvasRelativePosition(event: any) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) * canvas.width  / rect.width,
+    y: (event.clientY - rect.top ) * canvas.height / rect.height,
+  };
+}
+ 
+function setPickPosition(event: any) {
+  const pos = getCanvasRelativePosition(event);
+  pickPosition.x = (pos.x / canvas.width ) *  2 - 1;
+  pickPosition.y = (pos.y / canvas.height) * -2 + 1; 
+}
+ 
+function clearPickPosition() {
+  pickPosition.x = -100000;
+  pickPosition.y = -100000;
 }
 
 async function loadSelection(files: FileList) {
@@ -437,9 +494,12 @@ applyWireframe();
 
 
 // ---------- Render Loop ----------
+const pickHelper = new PickHelper();
+
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    pickHelper.pick(pickPosition, scene, camera);
     renderer.render(scene, camera);
 }
 animate();
