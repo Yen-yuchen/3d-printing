@@ -66,33 +66,66 @@ const scaleSlider = document.getElementById("scale") as HTMLInputElement | null;
 const resetCamBtn = document.getElementById("resetCam") as HTMLButtonElement | null;
 
 // ---------- Mouse Selection ----------
+
+//Sources: 
+//  https://threejs.org/manual/#en/picking
+
 const pickPosition = new THREE.Vector2(0,0)
 clearPickPosition();
+
+/*
+10278: -0.0137
+10279: 0.75
+10280: -1.486
+*/
 
 class PickHelper {
     raycaster: THREE.Raycaster;
     intersection: THREE.Intersection | null;
+    prevIntersection: THREE.Intersection | null;
 
     constructor(){
         this.raycaster = new THREE.Raycaster();
+        this.prevIntersection = null;
         this.intersection = null;
     }
     pick(normalizedPosition: THREE.Vector2, scene: THREE.Scene, camera: THREE.Camera){
 			this.raycaster.setFromCamera(normalizedPosition, camera );
 			const intersectedObjects = this.raycaster.intersectObjects( scene.children );
 			if (intersectedObjects.length) {
-
 				this.intersection = intersectedObjects[0];
             }
 
             if(this.intersection?.face){
-                console.log(this.intersection);
+                if(this.intersection?.faceIndex !== this.prevIntersection?.faceIndex){
+                    if(this.intersection.object.type === "Mesh"){
+                        console.log("I am a mesh");
+                    }
+                    else{
+                        //we're not a mesh for some reason
+                    }
+                    /*
+
+                    Hey, Valen here, here's the plan with this:
+                        1. Identify if the object is a mesh (because the type here is THREE.Object3D and not THREE.Mesh despite it being a mesh)
+                        2. If so, add  BufferedGeometryUtils and merge the vertices (with some arbitrary error).
+                        3. With the merged vertices, then the following can be done.
+                            On click-
+                                If it's a face, add spheres at each vertex.
+                                If it's a sphere, delete the vertex and all corresponding faces.
+                                Else do nothing.
+
+                    */
+                }
             }
+            this.prevIntersection = this.intersection;
     
     }
 
 }
-
+window.addEventListener('click', () => {
+    pickHelper.pick(pickPosition, scene, camera);
+})
 window.addEventListener('mousemove', setPickPosition);
 window.addEventListener('mouseout', clearPickPosition);
 window.addEventListener('mouseleave', clearPickPosition);
@@ -499,7 +532,6 @@ const pickHelper = new PickHelper();
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
-    pickHelper.pick(pickPosition, scene, camera);
     renderer.render(scene, camera);
 }
 animate();
