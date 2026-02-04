@@ -99,6 +99,32 @@ class PickHelper {
                 if(!this.intersection){
                     return;
                 }
+                const mesh = this.intersection.object as THREE.Mesh;
+                removeVertexSpheres();
+                if(mesh.geometry.type === 'BufferGeometry'){
+                    //remove current vertex spheres
+                    if(this.intersection.face){
+                        addVertexSpheres(this.intersection.face, mesh);
+                    }
+                    //add new vertex spheres
+                }
+                else if (mesh.geometry.type === 'SphereGeometry'){
+                    //remove vertex spheres
+                    //removeVertex()
+                    //remove faces
+                    //remove vertex and adjust vertices
+                }
+                else{
+                    
+                    //Otherwise we don't care what we clicked.
+                    return;
+                }
+                console.log(this.intersection);
+                // if(this.intersection?.face){
+                //     addVertexSpheres(this.intersection?.face, mesh);
+                // }
+                
+                
             }
 
             
@@ -265,6 +291,41 @@ function setPickPosition(event: any) {
 function clearPickPosition() {
   pickPosition.x = -100000;
   pickPosition.y = -100000;
+}
+
+function addVertexSpheres(face: THREE.Face, mesh: THREE.Mesh){
+    const vertexPositions = mesh.geometry.attributes.position
+    const vertexIndexes  = [face.a, face.b, face.c];
+    mesh.updateMatrixWorld();
+    for(let i = 0; i < vertexIndexes.length; i++){
+         let vertex = new THREE.Vector3(
+            vertexPositions.getX(vertexIndexes[i]), 
+            vertexPositions.getY(vertexIndexes[i]), 
+            vertexPositions.getZ(vertexIndexes[i]));
+        //console.log("BEFORE VERTEX ", i, ": ", vertex);
+        vertex.applyMatrix4(mesh.matrixWorld);
+        //console.log("AFTER VERTEX ", i, ": ", vertex);
+        const sphereGeom = new THREE.SphereGeometry(0.02, 16, 16);
+        const sphereMat = new THREE.MeshStandardMaterial({color: 0xff0000});
+        const sphereMesh = new THREE.Mesh(sphereGeom, sphereMat);
+        
+        const pivot = new THREE.Object3D();
+        pivot.position.copy(currentModel?.worldToLocal(vertex) ?? new THREE.Vector3(0,0,0));
+        pivot.add(sphereMesh);
+        
+        sphereMesh.position.set(0,0,0);
+
+        currentModel?.add(pivot);
+    }
+
+
+    //const face = intersection.face;
+    //const vertA = intersection.object.geometry.attributes.position
+}
+
+function removeVertexSpheres(){
+    //add GPU Cleanup
+    
 }
 
 async function loadSelection(files: FileList) {
