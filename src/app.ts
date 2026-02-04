@@ -517,3 +517,12 @@ function animate() {
     renderer.render(scene, camera);
 }
 animate();
+
+const bgColorPicker = document.getElementById('bgColorPicker') as HTMLInputElement;
+
+if (bgColorPicker) {
+    bgColorPicker.addEventListener('input', (e) => {
+        const color = (e.target as HTMLInputElement).value;
+        scene.background = new THREE.Color(color);
+    });
+}
