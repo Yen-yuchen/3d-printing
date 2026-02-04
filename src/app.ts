@@ -324,7 +324,32 @@ function addVertexSpheres(face: THREE.Face, mesh: THREE.Mesh){
 }
 
 function removeVertexSpheres(){
-    //add GPU Cleanup
+    /*
+    What we have:
+        object
+            pivots
+                sphere meshes
+    
+    */
+    if(!currentModel){
+        return;
+    }
+    while (currentModel?.children.length > 0){
+        let pivot = currentModel.children[0];
+        let mesh = pivot.children[0] as THREE.Mesh;
+
+        pivot.remove(mesh);
+        currentModel.remove(pivot);
+
+        if(mesh.geometry){
+            mesh.geometry.dispose();
+        }
+        if(Array.isArray(mesh.material)){
+            mesh.material.forEach(child => child.dispose());
+        } else{
+            mesh.material.dispose();
+        }
+    }
     
 }
 
