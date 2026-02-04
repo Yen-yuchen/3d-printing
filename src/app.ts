@@ -74,12 +74,6 @@ const resetCamBtn = document.getElementById("resetCam") as HTMLButtonElement | n
 const pickPosition = new THREE.Vector2(0,0)
 clearPickPosition();
 
-/*
-10278: -0.0137
-10279: 0.75
-10280: -1.486
-*/
-
 class PickHelper {
     raycaster: THREE.Raycaster;
     intersection: THREE.Intersection | null;
@@ -87,40 +81,29 @@ class PickHelper {
 
     constructor(){
         this.raycaster = new THREE.Raycaster();
-        this.prevIntersection = null;
         this.intersection = null;
+        this.prevIntersection = null;
     }
     pick(normalizedPosition: THREE.Vector2, scene: THREE.Scene, camera: THREE.Camera){
 			this.raycaster.setFromCamera(normalizedPosition, camera );
-			const intersectedObjects = this.raycaster.intersectObjects( scene.children );
+			let intersectedObjects = this.raycaster.intersectObjects(scene.children);
+
 			if (intersectedObjects.length) {
-				this.intersection = intersectedObjects[0];
-            }
-
-            if(this.intersection?.face){
-                if(this.intersection?.faceIndex !== this.prevIntersection?.faceIndex){
-                    if(this.intersection.object.type === "Mesh"){
-                        console.log(this.intersection.object);
+			    this.intersection = intersectedObjects.filter((intersect) => {
+                    if(intersect?.object){
+                        return intersect.object.type == 'Mesh';
                     }
-                    else{
-                        //we're not a mesh for some reason
-                    }
-                    /*
+                    return false;
+                })[0] ?? null; //Return the first intersected mesh or null if no meshes are intersected.
 
-                    Hey, Valen here, here's the plan with this:
-                        1. Identify if the object is a mesh (because the type here is THREE.Object3D and not THREE.Mesh despite it being a mesh)
-                        2. If so, add  BufferedGeometryUtils and merge the vertices (with some arbitrary error).
-                        3. With the merged vertices, then the following can be done.
-                            On click-
-                                If it's a face, add spheres at each vertex.
-                                If it's a sphere, delete the vertex and all corresponding faces.
-                                Else do nothing.
-
-                    */
+                if(!this.intersection){
+                    return;
                 }
             }
-            this.prevIntersection = this.intersection;
-    
+
+            
+            
+            
     }
 
 }
