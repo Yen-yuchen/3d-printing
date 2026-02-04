@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
@@ -99,7 +100,7 @@ class PickHelper {
             if(this.intersection?.face){
                 if(this.intersection?.faceIndex !== this.prevIntersection?.faceIndex){
                     if(this.intersection.object.type === "Mesh"){
-                        console.log("I am a mesh");
+                        console.log(this.intersection.object);
                     }
                     else{
                         //we're not a mesh for some reason
@@ -357,6 +358,13 @@ async function loadSelection(files: FileList) {
         const onLoaded = (object: THREE.Object3D) => {
             clearCurrentModel();
             currentModel = object;
+            object.traverse((child: any) =>{
+                if(child?.geometry?.isBufferGeometry){
+                    console.log("Before merge: ", child.geometry.attributes.position.count)
+                    child.geometry = BufferGeometryUtils.mergeVertices(child.geometry, 0.001);
+                    console.log("After merge: ", child.geometry.attributes.position.count);
+                }
+            })
             scene.add(object);
             cube.visible = false;
 
@@ -397,10 +405,18 @@ async function loadSelection(files: FileList) {
     const name = mainSingle.name.toLowerCase();
     const url = URL.createObjectURL(mainSingle);
 
-    const onLoaded = (object: THREE.Object3D) => {
+    const onLoaded = (object: THREE.Mesh) => {
         clearCurrentModel();
-
         currentModel = object;
+
+        object.traverse((child: any) =>{
+                if(child?.geometry?.isBufferGeometry){
+                    console.log("Before merge: ", child.geometry.attributes.position.count)
+                    child.geometry = BufferGeometryUtils.mergeVertices(child.geometry, 0.001);
+                    console.log("After merge: ", child.geometry.attributes.position.count);
+                }
+        })
+
         scene.add(object);
         cube.visible = false;
 
