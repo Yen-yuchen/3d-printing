@@ -4,6 +4,83 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 
+import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
+
+const meshSlider = document.getElementById('meshDensitySlider') as HTMLInputElement;
+const meshValue = document.getElementById('meshDensityValue') as HTMLElement;
+const polyCountLabel = document.getElementById('polyCount') as HTMLElement;
+const simplifyModifier = new SimplifyModifier();
+
+if (meshSlider) {
+    
+    meshSlider.addEventListener('input', () => {
+        const percent = Math.round(parseFloat(meshSlider.value) * 100);
+        if (meshValue) {
+            meshValue.textContent = `${percent}% (preview)`;
+            meshValue.style.color = '#ffff00'; 
+        }
+    });
+
+    
+    meshSlider.addEventListener('change', () => {
+        if (!currentModel) return;
+        
+        const ratio = parseFloat(meshSlider.value);
+        if (meshValue) {
+            meshValue.textContent = `${Math.round(ratio * 100)}%`;
+            meshValue.style.color = '#ff9800'; 
+        }
+
+        setStatus("Mesh simplification is being calculated....");
+
+        
+        setTimeout(() => {
+            let totalFaces = 0;
+
+            currentModel!.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                    const mesh = child as THREE.Mesh;
+                    
+                    
+                    if (!mesh.userData.originalGeometry) {
+                        mesh.userData.originalGeometry = mesh.geometry.clone();
+                    }
+
+                    const originalGeo = mesh.userData.originalGeometry;
+                    
+                    
+                    if (ratio >= 0.95) {
+                        mesh.geometry.dispose();
+                        mesh.geometry = originalGeo.clone();
+                        totalFaces += (mesh.geometry.index ? mesh.geometry.index.count / 3 : mesh.geometry.attributes.position.count / 3);
+                        return;
+                    }
+
+                    
+                    const count = originalGeo.attributes.position.count;
+                    const target = Math.floor(count * ratio);
+                    
+                    if (target < 10) return;
+
+                    try {
+                        const simplified = simplifyModifier.modify(originalGeo.clone(), target);
+                        mesh.geometry.dispose();
+                        mesh.geometry = simplified;
+                        
+                        
+                        totalFaces += (simplified.index ? simplified.index.count / 3 : simplified.attributes.position.count / 3);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+            });
+
+            if (polyCountLabel) polyCountLabel.textContent = `Faces: ${Math.floor(totalFaces)}`;
+            setStatus("Simplified");
+        }, 50);
+    });
+}
+
 const viewer = document.getElementById("viewer") as HTMLDivElement;
 
 // ---------- Scene ----------

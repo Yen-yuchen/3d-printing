@@ -2,55 +2,130 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Canvas Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meshmixer Style Viewer</title>
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
 <div id="app">
-    <aside id="sidebar">
-        <h2>Settings</h2>
+    <nav id="main-toolbar">
+        
+        
+        <button class="tool-btn active" data-target="panel-import" title="Import">
+            <i class="fa-solid fa-folder-open"></i>
+            <span>Import</span>
+        </button>
 
-        <label class="btn upload-btn">
-            Upload model (single .glb/.stl/.obj or a .gltf package)
-            <!--
-              For .gltf packages, select the .gltf AND all referenced files (.bin/.png/.jpg/etc)
-              in the same upload selection.
-            -->
-            <input id="fileInput" type="file" accept=".stl,.obj,.gltf,.glb,.bin,.png,.jpg,.jpeg" multiple hidden />
-        </label>
+        <button class="tool-btn" data-target="panel-edit" title="Edit">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+            <span>Edit</span>
+        </button>
 
-        <div id="status" class="muted">No file loaded.</div>
+        <button class="tool-btn" data-target="panel-view" title="View">
+            <i class="fa-solid fa-eye"></i>
+            <span>View</span>
+        </button>
 
-        <div class="toggle-row">
-            <label class="toggle">
-                <input id="gridToggle" type="checkbox" checked />
-                Show grid
-            </label>
+        <button class="tool-btn" data-target="panel-analysis" title="Analysis">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Analysis</span>
+        </button>
+    </nav>
 
-            <label class="toggle">
-                <input id="modelToggle" type="checkbox" checked />
-                Show model
-            </label>
+    <aside id="tool-panel">
+        
+        <div id="panel-header">Import</div>
 
-            <label class="toggle">
-                <input id="wireToggle" type="checkbox" />
-                Wireframe
-            </label>
+        <div id="panel-import" class="tool-group active">
+            <div class="control-group">
+                <label class="btn-primary">
+                    <i class="fa-solid fa-upload"></i> Import Model
+                    <input id="fileInput" type="file" accept=".stl,.obj,.gltf,.glb,.bin,.png,.jpg,.jpeg" multiple hidden />
+                </label>
+                <div id="status" class="status-text">No file loaded</div>
+            </div>
         </div>
 
-        <label>
-            Scale
-            <input id="scale" type="range" min="10" max="300" value="100" />
-        </label>
-        <button id="btn-simulation" class="btn btn-sm">Simulate Deformation</button>
-        <button id="btn-settings" class="btn btn-sm">Constraints Settings</button>
+    <div id="panel-edit" class="tool-group">
 
-        <button id="resetCam">Reset Camera</button>
+        <div class="control-group">
+            <label class="label-title">Mesh Density </label>
+        
+            <div class="slider-container">
+                <span style="font-size: 12px; color: #888;">Low</span>
+                <input id="meshDensitySlider" type="range" min="0.05" max="1" step="0.05" value="1" />
+                <span style="font-size: 12px; color: #888;">High</span>
+            </div>
+        
+            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                <span id="meshDensityValue" style="color: #ff9800; font-weight: bold;">100%</span>
+                <span id="polyCount" style="color: #666; font-size: 10px;">Faces: 0</span>
+            </div>
+        </div>
+    </div>
+        <div id="panel-view" class="tool-group">
+            <div class="control-group">
+                <label class="toggle-row">
+                    <span>Show Grid</span>
+                    <input id="gridToggle" type="checkbox" checked />
+                </label>
+                <label class="toggle-row">
+                    <span>Show Model</span>
+                    <input id="modelToggle" type="checkbox" checked />
+                </label>
+                <label class="toggle-row">
+                    <span>Wireframe</span>
+                    <input id="wireToggle" type="checkbox" />
+                </label>
+            </div>
+            <div class="control-group">
+                <button id="resetCam" class="btn-tool">Reset Camera</button>
+            </div>
+        </div>
+
+        <div id="panel-analysis" class="tool-group">
+             <div class="control-group">
+                <button id="btn-simulation" class="btn-tool">Simulate Deformation</button>
+                <button id="btn-settings" class="btn-tool">Constraints Settings</button>
+             </div>
+        </div>
     </aside>
 
     <main id="viewer"></main>
 </div>
+
+<script>
+    const buttons = document.querySelectorAll('.tool-btn');
+    const groups = document.querySelectorAll('.tool-group');
+    const header = document.getElementById('panel-header');
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            
+            buttons.forEach(b => b.classList.remove('active'));
+            groups.forEach(g => g.classList.remove('active'));
+
+            
+            btn.classList.add('active');
+            const targetId = btn.getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active');
+            
+            
+            header.textContent = btn.querySelector('span').innerText;
+        });
+    });
+
+    
+    const scaleInput = document.getElementById('scale');
+    const scaleVal = document.getElementById('scale-val');
+    if(scaleInput && scaleVal) {
+        scaleInput.addEventListener('input', (e) => {
+            scaleVal.textContent = e.target.value + '%';
+        });
+    }
+</script>
 
 <script type="module" src="/app.ts"></script>
 </body>

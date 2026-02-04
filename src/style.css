@@ -12,93 +12,184 @@ html, body { height: 100%; margin: 0;}
 
 body {
     margin: 0;
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    background: radial-gradient(1200px 800px at 20% 10%, #13203a, var(--bg));
-    color: var(--text);
+    padding: 0;
+    background-color: #1e1e1e; 
+    color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden; 
 }
-
-.muted { color: var(--muted); }
 
 #app {
+    display: flex;
+    width: 100vw;
     height: 100vh;
-    display: grid;
-    grid-template-columns: 320px 1fr;
 }
 
-#sidebar {
-    padding: 16px;
-    border-right: 1px solid var(--border);
-    background: color-mix(in oklab, var(--panel), black 10%);
-    overflow: auto;
+
+#main-toolbar {
+    width: 80px;
+    background-color: #2b2b2b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-right: 1px solid #3c3c3c;
+    z-index: 10;
 }
 
-#sidebar h2 {
-    margin: 0 0 14px;
-    font-size: 18px;
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ff9800;
+    margin: 20px 0;
 }
 
-#sidebar label {
-    display: grid;
-    gap: 8px;
-    margin: 12px 0;
-}
-
-#status {
-    margin: 10px 0 14px;
-}
-
-/* Viewer takes remaining space */
-#viewer {
-    position: relative;
-    min-width: 0;
-    height: 100%;
-    overflow: hidden;
-}
-
-/* Button styling (upload + reset) */
-.btn,
-button#resetCam {
-    border: 1px solid var(--border);
-    background: color-mix(in oklab, var(--accent), black 70%);
-    color: var(--text);
-    padding: 10px 12px;
-    border-radius: 10px;
+.tool-btn {
+    background: none;
+    border: none;
+    color: #aaa;
+    width: 100%;
+    padding: 15px 0;
     cursor: pointer;
-    display: inline-flex;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    font-weight: 600;
-    user-select: none;
-    transition: 140ms ease;
+    gap: 5px;
+    transition: 0.2s;
 }
 
-.btn:hover,
-button#resetCam:hover { transform: translateY(-1px); }
-
-.btn:active,
-button#resetCam:active { transform: translateY(0px); }
-
-.upload-btn {
-    width: fit-content;
+.tool-btn i {
+    font-size: 20px;
 }
 
-/* Toggles */
+.tool-btn span {
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.tool-btn:hover {
+    color: white;
+    background-color: #383838;
+}
+
+.tool-btn.active {
+    color: #ff9800; 
+    background-color: #1e1e1e; 
+    border-left: 3px solid #ff9800;
+}
+
+
+#tool-panel {
+    width: 250px;
+    background-color: #1e1e1e; 
+    border-right: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#panel-header {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #fff;
+    border-bottom: 2px solid #ff9800;
+    padding-bottom: 10px;
+}
+
+
+.tool-group {
+    display: none; 
+}
+
+.tool-group.active {
+    display: block; 
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+.control-group {
+    margin-bottom: 25px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 15px;
+}
+
+.label-title {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+
+.btn-primary, .btn-tool {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #444;
+    border: 1px solid #555;
+    color: white;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+.btn-primary {
+    background-color: #ff9800;
+    border-color: #e68900;
+    color: #000;
+    font-weight: bold;
+}
+
+.btn-primary:hover {
+    background-color: #ffb74d;
+}
+
+.btn-tool:hover {
+    background-color: #555;
+}
+
+
 .toggle-row {
-    display: grid;
-    gap: 10px;
-    margin: 10px 0 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #ccc;
+    cursor: pointer;
 }
 
-.toggle {
-    display: inline-flex;
+.status-text {
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+    text-align: center;
+}
+
+
+.slider-container {
+    display: flex;
     align-items: center;
     gap: 10px;
-    margin: 0;
-    font-weight: 600;
 }
 
-.toggle input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
+input[type=range] {
+    flex-grow: 1;
 }
-canvas {display: block;}
+
+
+#viewer {
+    flex-grow: 1;
+    background-color: #111; 
+    position: relative;
+}
