@@ -49,22 +49,62 @@
         </div>
 
     <div id="panel-edit" class="tool-group">
+    
+        <div class="control-group">
+            <label class="label-title">Scale</label>
+            <div class="slider-container">
+                <input id="scale" type="range" min="10" max="300" value="100" />
+                <span id="scale-val">100%</span>
+            </div>
+        </div>
 
         <div class="control-group">
-            <label class="label-title">Mesh Density </label>
-        
-            <div class="slider-container">
-                <span style="font-size: 12px; color: #888;">Low</span>
-                <input id="meshDensitySlider" type="range" min="0.05" max="1" step="0.05" value="1" />
-                <span style="font-size: 12px; color: #888;">High</span>
+            <label class="label-title">Reduce</label>
+
+            <div style="margin-bottom: 10px;">
+                <span style="font-size: 12px; color: #aaa;">Reduce Type</span>
+                <select id="reduceType" style="width: 100%; background: #333; color: white; border: 1px solid #555; padding: 5px;">
+                    <option value="preserve">Shape Preserving </option>
+                    <option value="uniform">Uniform </option>
+                </select>
             </div>
-        
-            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-                <span id="meshDensityValue" style="color: #ff9800; font-weight: bold;">100%</span>
-                <span id="polyCount" style="color: #666; font-size: 10px;">Faces: 0</span>
+
+            <div style="margin-bottom: 10px;">
+                <span style="font-size: 12px; color: #aaa;">Reduce Target</span>
+                <select id="reduceTargetMode" style="width: 100%; background: #333; color: white; border: 1px solid #555; padding: 5px;">
+                    <option value="percentage">Percentage (percentage)</option>
+                    <option value="budget">Triangle Budget (side count)</option>
+                </select>
+            </div>
+
+            <div id="control-percentage" style="display: block;">
+                <div class="slider-container">
+                    <span style="font-size: 10px; color: #888;">0%</span>
+                    <input id="meshDensitySlider" type="range" min="1" max="100" step="1" value="100" />
+                    <span style="font-size: 10px; color: #888;">100%</span>
+                </div>
+                <div style="text-align: right; color: #ff9800; font-weight: bold; font-size: 14px; margin-top: 5px;">
+                    <span id="meshDensityValue">100%</span>
+                </div>
+            </div>
+
+            <div id="control-budget" style="display: none; margin-top: 10px;">
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <input id="polyBudgetInput" type="number" min="10" step="100" style="flex-grow: 1; background: #222; border: 1px solid #555; color: #ff9800; padding: 5px; text-align: right;" placeholder="Target Count" />
+                    <span style="font-size: 12px; color: #888;">Verts</span>
+                </div>
+                <div style="font-size: 10px; color: #666; text-align: right; margin-top: 2px;">
+                    Original: <span id="originalCountLabel">0</span>
+                </div>
+                <button id="btnApplyBudget" class="btn-tool" style="margin-top: 5px;">Apply Budget</button>
+            </div>
+
+            <div style="margin-top: 10px; border-top: 1px solid #444; padding-top: 5px;">
+                <span id="polyCount" style="color: #888; font-size: 11px;">Current Vertices: 0</span>
             </div>
         </div>
     </div>
+
         <div id="panel-view" class="tool-group">
             <div class="control-group">
                 

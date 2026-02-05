@@ -3,80 +3,22 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
-
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
+
+// ---------- UI Elements for Meshmixer Tools ----------
+const reduceTargetSelect = document.getElementById('reduceTargetMode') as HTMLSelectElement;
+const controlPercent = document.getElementById('control-percentage');
+const controlBudget = document.getElementById('control-budget');
 
 const meshSlider = document.getElementById('meshDensitySlider') as HTMLInputElement;
 const meshValue = document.getElementById('meshDensityValue') as HTMLElement;
-const polyCountLabel = document.getElementById('polyCount') as HTMLElement;
-const simplifyModifier = new SimplifyModifier();
 
-if (meshSlider) {
-    
-    meshSlider.addEventListener('input', () => {
-        const percent = Math.round(parseFloat(meshSlider.value) * 100);
-        if (meshValue) {
-            meshValue.textContent = `${percent}% (preview)`;
-            meshValue.style.color = '#ffff00'; 
-        }
-    });
+const budgetInput = document.getElementById('polyBudgetInput') as HTMLInputElement;
+const btnApplyBudget = document.getElementById('btnApplyBudget');
+const originalCountLabel = document.getElementById('originalCountLabel');
 
-    
-    
-meshSlider.addEventListener('change', () => {
-    if (!currentModel) return;
-    
-    const ratio = parseFloat(meshSlider.value);
-    
-    
-
-    setTimeout(() => {
-        // ...
-        currentModel!.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
-                
-                
-                if (!mesh.userData.originalGeometry) {
-                    mesh.userData.originalGeometry = mesh.geometry.clone();
-                }
-
-                const originalGeo = mesh.userData.originalGeometry;
-                
-                
-                if (ratio >= 0.95) {
-                    mesh.geometry.dispose();
-                    mesh.geometry = originalGeo.clone();
-                    return;
-                }
-
-                
-                const totalCount = originalGeo.attributes.position.count;
-                
-                
-                const removeCount = Math.floor(totalCount * (1 - ratio));
-
-                if (removeCount < 5) return; 
-
-                const safeRemoveCount = Math.min(removeCount, Math.floor(totalCount * 0.95));
-
-                try {
-                    
-                    const simplified = simplifyModifier.modify(originalGeo.clone(), safeRemoveCount);
-                    
-                    mesh.geometry.dispose();
-                    mesh.geometry = simplified;
-                    
-                } catch (e) {
-                    console.error("simplify fail:", e);
-                }
-            }
-        });
-        // ...
-    }, 50);
-});
-    
-}
+const polyCountLabel = document.getElementById('polyCount');
+const modifier = new SimplifyModifier();
 
 const viewer = document.getElementById("viewer") as HTMLDivElement;
 
@@ -124,7 +66,7 @@ scene.add(axesHelper);
 // ---------- Current Model ----------
 let currentModel: THREE.Object3D | null = null;
 
-// ---------- UI ----------
+// ---------- UI Hooks ----------
 const fileInput = document.getElementById("fileInput") as HTMLInputElement | null;
 const statusEl = document.getElementById("status") as HTMLDivElement | null;
 
@@ -134,10 +76,10 @@ const wireToggle = document.getElementById("wireToggle") as HTMLInputElement | n
 const scaleSlider = document.getElementById("scale") as HTMLInputElement | null;
 
 const resetCamBtn = document.getElementById("resetCam") as HTMLButtonElement | null;
+const bgColorPicker = document.getElementById('bgColorPicker') as HTMLInputElement;
+const modelColorPicker = document.getElementById('modelColorPicker') as HTMLInputElement;
 
 // ---------- Loaders ----------
-// Note: for .gltf packages (gltf + .bin + textures), we create a loader with a custom LoadingManager
-// so dependent files can be resolved from the user's uploaded FileList.
 const stlLoader = new STLLoader();
 const objLoader = new OBJLoader();
 
@@ -153,22 +95,18 @@ function getTargetObject(): THREE.Object3D {
 function applyHelperVisibility() {
     const showGrid = gridToggle?.checked ?? true;
     gridHelper.visible = showGrid;
-    axesHelper.visible = showGrid; // tied to grid; can split later if you want
+    axesHelper.visible = showGrid;
 }
 
 function applyModelVisibility() {
     const showModel = modelToggle?.checked ?? true;
-
     if (currentModel) currentModel.visible = showModel;
-
-    // If no model loaded, cube acts like "the model"
     cube.visible = !currentModel && showModel;
 }
 
 function applyScaleFromSlider() {
-    const sliderValue = Number(scaleSlider?.value ?? 100); // 100 = normal
+    const sliderValue = Number(scaleSlider?.value ?? 100); 
     const factor = sliderValue / 100;
-
     const target = getTargetObject();
     target.scale.set(factor, factor, factor);
 }
@@ -176,12 +114,9 @@ function applyScaleFromSlider() {
 function setWireframe(object: THREE.Object3D, enabled: boolean) {
     object.traverse((child: any) => {
         if (!child || !child.isMesh) return;
-
         const mat = child.material;
         if (Array.isArray(mat)) {
-            mat.forEach((m) => {
-                if (m) m.wireframe = enabled;
-            });
+            mat.forEach((m) => { if (m) m.wireframe = enabled; });
         } else if (mat) {
             mat.wireframe = enabled;
         }
@@ -197,19 +132,14 @@ function applyWireframe() {
 function clearCurrentModel() {
     if (currentModel) {
         scene.remove(currentModel);
-
-        // Best-effort GPU cleanup
         currentModel.traverse((child: any) => {
             if (child?.geometry) child.geometry.dispose?.();
             const mat = child?.material;
             if (Array.isArray(mat)) mat.forEach((m) => m?.dispose?.());
             else mat?.dispose?.();
         });
-
         currentModel = null;
     }
-
-    // Show cube again (respect toggles)
     applyModelVisibility();
     applyScaleFromSlider();
     applyWireframe();
@@ -219,7 +149,6 @@ function fitCameraToObject(object: THREE.Object3D, fitOffset = 1.2) {
     const box = new THREE.Box3().setFromObject(object);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-
     const maxSize = Math.max(size.x, size.y, size.z);
     if (!Number.isFinite(maxSize) || maxSize <= 0) return;
 
@@ -228,19 +157,16 @@ function fitCameraToObject(object: THREE.Object3D, fitOffset = 1.2) {
     const distance = fitOffset * Math.max(fitHeightDistance, fitWidthDistance);
 
     controls.target.copy(center);
-
     camera.near = distance / 100;
     camera.far = distance * 100;
     camera.updateProjectionMatrix();
 
     const direction = new THREE.Vector3(1, 1, 1).normalize();
     camera.position.copy(center).add(direction.multiplyScalar(distance));
-
     controls.update();
 }
 
 function baseName(pathLike: string): string {
-    // Handles urls like "textures/wood.png" or "C:\\foo\\bar.bin"
     const cleaned = decodeURIComponent(pathLike).replace(/\\/g, "/");
     const parts = cleaned.split("/");
     return parts[parts.length - 1] || cleaned;
@@ -248,141 +174,70 @@ function baseName(pathLike: string): string {
 
 function collectExternalUris(gltfJson: any): Set<string> {
     const uris = new Set<string>();
-
     const addUri = (uri?: string) => {
-        if (!uri) return;
-        // data: URIs are embedded; not external.
-        if (uri.startsWith("data:")) return;
+        if (!uri || uri.startsWith("data:")) return;
         uris.add(baseName(uri));
     };
-
     if (Array.isArray(gltfJson?.buffers)) {
         for (const b of gltfJson.buffers) addUri(b?.uri);
     }
-
     if (Array.isArray(gltfJson?.images)) {
         for (const img of gltfJson.images) addUri(img?.uri);
     }
-
     return uris;
 }
 
+// ==========================================
+// Meshmixer Style Logic: Update Budget UI
+// ==========================================
+function updateBudgetInputFromCurrent() {
+    if (!currentModel) return;
+    let totalVerts = 0;
+    let totalOrig = 0;
+    
+    currentModel.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            totalVerts += mesh.geometry.attributes.position.count;
+            if (mesh.userData.originalGeometry) {
+                totalOrig += mesh.userData.originalGeometry.attributes.position.count;
+            } else {
+                // 如果還沒備份，當作當前就是原始
+                totalOrig += mesh.geometry.attributes.position.count;
+            }
+        }
+    });
+    
+    if (budgetInput) budgetInput.value = totalVerts.toString();
+    if (originalCountLabel) originalCountLabel.textContent = totalOrig.toString();
+    if (polyCountLabel) polyCountLabel.textContent = `Current Vertices: ${totalVerts}`;
+}
+
+// ==========================================
+// Loader Logic
+// ==========================================
 async function loadSelection(files: FileList) {
     const selected = Array.from(files);
     if (selected.length === 0) return;
 
-    // Prefer a single "main" model file.
     const gltfFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".gltf"));
     const glbFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".glb"));
     const stlFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".stl"));
     const objFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".obj"));
 
-    // ---- glTF JSON package (.gltf + external .bin/.png/etc) ----
-    if (gltfFiles.length > 0) {
-        if (gltfFiles.length !== 1) {
-            setStatus("Please select exactly one .gltf file (plus its associated .bin/.png/etc files).");
-            return;
-        }
-
-        const gltfFile = gltfFiles[0];
-        let gltfJson: any;
-        try {
-            gltfJson = JSON.parse(await gltfFile.text());
-        } catch (e) {
-            console.error(e);
-            setStatus("That .gltf file is not valid JSON.");
-            return;
-        }
-
-        const required = collectExternalUris(gltfJson);
-        const allowed = new Set<string>([gltfFile.name, ...required]);
-
-        // Rule the user asked for:
-        // If ANY selected file doesn't belong to the .gltf package, don't load anything.
-        const extra = selected
-            .map((f) => f.name)
-            .filter((name) => !allowed.has(name));
-        if (extra.length > 0) {
-            setStatus(
-                `Selection contains unrelated file(s): ${extra.join(", ")}. ` +
-                "Please select ONLY the .gltf and its referenced files."
-            );
-            return;
-        }
-
-        // Ensure all referenced external files are present.
-        const missing = Array.from(required).filter((name) => !selected.some((f) => f.name === name));
-        if (missing.length > 0) {
-            setStatus(
-                `Missing required file(s): ${missing.join(", ")}. ` +
-                "Select the .gltf AND all required .bin/.png/etc in the same upload."
-            );
-            return;
-        }
-
-        // Build blob URLs for everything in the package.
-        const fileMap = new Map<string, string>();
-        const urlsToRevoke: string[] = [];
-        for (const f of selected) {
-            const u = URL.createObjectURL(f);
-            fileMap.set(f.name, u);
-            urlsToRevoke.push(u);
-        }
-
-        const manager = new THREE.LoadingManager();
-        manager.setURLModifier((requestedUrl) => {
-            const key = baseName(requestedUrl);
-            return fileMap.get(key) ?? requestedUrl;
-        });
-
-        const gltfLoader = new GLTFLoader(manager);
-        const mainUrl = fileMap.get(gltfFile.name)!;
-
-        const onLoaded = (object: THREE.Object3D) => {
-            clearCurrentModel();
-            currentModel = object;
-            scene.add(object);
-            cube.visible = false;
-
-            applyModelVisibility();
-            applyHelperVisibility();
-            applyScaleFromSlider();
-            applyWireframe();
-            fitCameraToObject(object);
-
-            setStatus(`Loaded: ${gltfFile.name}`);
-            urlsToRevoke.forEach(URL.revokeObjectURL);
-        };
-
-        const onError = (err: any) => {
-            console.error(err);
-            setStatus(`Failed to load: ${gltfFile.name}`);
-            urlsToRevoke.forEach(URL.revokeObjectURL);
-        };
-
-        gltfLoader.load(mainUrl, (gltf) => onLoaded(gltf.scene), undefined, onError);
-        return;
-    }
-
-    // ---- Single-file formats (.glb/.stl/.obj) ----
-    const mainSingle = glbFiles[0] ?? stlFiles[0] ?? objFiles[0];
-    if (!mainSingle) {
-        setStatus("Unsupported selection. Choose a .glb/.stl/.obj, or a .gltf package.");
-        return;
-    }
-
-    // Enforce the same “no unrelated files” idea for non-.gltf uploads:
-    // if you picked a single-file format, do not allow extra files.
-    if (selected.length !== 1) {
-        setStatus(`"${mainSingle.name}" is a single-file format. Please select only that one file.`);
-        return;
-    }
-
-    const name = mainSingle.name.toLowerCase();
-    const url = URL.createObjectURL(mainSingle);
-
-    const onLoaded = (object: THREE.Object3D) => {
+    // Helper: Shared logic after any model is loaded
+    const onLoaded = (object: THREE.Object3D, fileName: string) => {
         clearCurrentModel();
+        
+        // 1. Backup Geometry for Simplification
+        object.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                if (!mesh.userData.originalGeometry) {
+                    mesh.userData.originalGeometry = mesh.geometry.clone();
+                }
+            }
+        });
 
         currentModel = object;
         scene.add(object);
@@ -394,135 +249,279 @@ async function loadSelection(files: FileList) {
         applyWireframe();
         fitCameraToObject(object);
 
-        setStatus(`Loaded: ${mainSingle.name}`);
-        URL.revokeObjectURL(url);
+        setStatus(`Loaded: ${fileName}`);
+
+        // Reset Meshmixer UI
+        if (meshSlider) meshSlider.value = "100";
+        if (meshValue) {
+            meshValue.textContent = "100%";
+            meshValue.style.color = '#ff9800';
+        }
+        updateBudgetInputFromCurrent();
     };
 
-    const onError = (err: any) => {
-        console.error(err);
-        setStatus(`Failed to load: ${mainSingle.name}`);
+    // ---- glTF JSON package ----
+    if (gltfFiles.length > 0) {
+        if (gltfFiles.length !== 1) { setStatus("Select exactly one .gltf + deps."); return; }
+        const gltfFile = gltfFiles[0];
+        let gltfJson: any;
+        try { gltfJson = JSON.parse(await gltfFile.text()); } 
+        catch (e) { console.error(e); setStatus("Invalid JSON."); return; }
+
+        const required = collectExternalUris(gltfJson);
+        const allowed = new Set<string>([gltfFile.name, ...required]);
+        const extra = selected.map(f => f.name).filter(n => !allowed.has(n));
+        if (extra.length > 0) { setStatus(`Unrelated files: ${extra.join(", ")}`); return; }
+        const missing = Array.from(required).filter(n => !selected.some(f => f.name === n));
+        if (missing.length > 0) { setStatus(`Missing: ${missing.join(", ")}`); return; }
+
+        const fileMap = new Map<string, string>();
+        const urlsToRevoke: string[] = [];
+        for (const f of selected) {
+            const u = URL.createObjectURL(f);
+            fileMap.set(f.name, u);
+            urlsToRevoke.push(u);
+        }
+
+        const manager = new THREE.LoadingManager();
+        manager.setURLModifier((url) => fileMap.get(baseName(url)) ?? url);
+        const gltfLoader = new GLTFLoader(manager);
+        
+        gltfLoader.load(fileMap.get(gltfFile.name)!, (gltf) => {
+            onLoaded(gltf.scene, gltfFile.name);
+            urlsToRevoke.forEach(URL.revokeObjectURL);
+        }, undefined, (e) => {
+            console.error(e); setStatus(`Failed: ${gltfFile.name}`);
+            urlsToRevoke.forEach(URL.revokeObjectURL);
+        });
+        return;
+    }
+
+    // ---- Single file ----
+    const mainSingle = glbFiles[0] ?? stlFiles[0] ?? objFiles[0];
+    if (!mainSingle || selected.length !== 1) {
+        setStatus("Unsupported or multiple single files selected.");
+        return;
+    }
+    const name = mainSingle.name.toLowerCase();
+    const url = URL.createObjectURL(mainSingle);
+    
+    const onError = (e: any) => {
+        console.error(e); setStatus(`Failed: ${mainSingle.name}`);
         URL.revokeObjectURL(url);
     };
 
     if (name.endsWith(".glb")) {
-        const gltfLoader = new GLTFLoader();
-        gltfLoader.load(url, (gltf) => onLoaded(gltf.scene), undefined, onError);
+        new GLTFLoader().load(url, (gltf) => {
+            onLoaded(gltf.scene, mainSingle.name);
+            URL.revokeObjectURL(url);
+        }, undefined, onError);
     } else if (name.endsWith(".stl")) {
-        stlLoader.load(
-            url,
-            (geometry) => {
-                geometry.center();
-                const material = new THREE.MeshStandardMaterial({
-                    color: 0x9a9a9a,
-                    roughness: 0.55,
-                    metalness: 0.1,
-                });
-                const mesh = new THREE.Mesh(geometry, material);
-                mesh.rotation.x = -Math.PI / 2;
-                onLoaded(mesh);
-            },
-            undefined,
-            onError
-        );
+        stlLoader.load(url, (geo) => {
+            geo.center();
+            // Default color or picked color
+            const initialColor = modelColorPicker ? modelColorPicker.value : "#9a9a9a";
+            const mat = new THREE.MeshStandardMaterial({ color: initialColor, roughness: 0.5, metalness: 0.1 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.rotation.x = -Math.PI / 2;
+            onLoaded(mesh, mainSingle.name);
+            URL.revokeObjectURL(url);
+        }, undefined, onError);
     } else if (name.endsWith(".obj")) {
-        objLoader.load(url, (obj) => onLoaded(obj), undefined, onError);
-    } else {
-        setStatus("Unsupported file. Use .glb, .gltf (+ package files), .stl, or .obj");
-        URL.revokeObjectURL(url);
+        objLoader.load(url, (obj) => {
+            onLoaded(obj, mainSingle.name);
+            URL.revokeObjectURL(url);
+        }, undefined, onError);
     }
 }
 
-// ---------- Resize ----------
-function resizeToViewer() {
-    const w = viewer.clientWidth;
-    const h = viewer.clientHeight;
+// ---------- UI Event Listeners ----------
 
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-}
-
-resizeToViewer();
-window.addEventListener("resize", resizeToViewer);
-new ResizeObserver(resizeToViewer).observe(viewer);
-
-// ---------- UI Hooks ----------
-fileInput?.addEventListener("change", (event) => {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-
-    // Load based on the entire selection (supports .gltf packages).
-    loadSelection(input.files);
-
-    // Allow selecting the same files again without needing to pick something else first.
+fileInput?.addEventListener("change", (e) => {
+    const input = e.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) loadSelection(input.files);
     input.value = "";
 });
 
 gridToggle?.addEventListener("change", applyHelperVisibility);
-
-modelToggle?.addEventListener("change", () => {
-    applyModelVisibility();
-});
-
-wireToggle?.addEventListener("change", () => {
-    applyWireframe();
-});
-
+modelToggle?.addEventListener("change", applyModelVisibility);
+wireToggle?.addEventListener("change", applyWireframe);
 scaleSlider?.addEventListener("input", () => {
     applyScaleFromSlider();
-    // Keep wireframe consistent (in case you swap targets later)
     applyWireframe();
 });
-
 resetCamBtn?.addEventListener("click", () => {
     camera.position.set(2, 2, 4);
     controls.target.set(0, 0, 0);
     controls.update();
 });
 
-// Apply initial states
-applyHelperVisibility();
-applyModelVisibility();
-applyScaleFromSlider();
-applyWireframe();
+// 1. Background Color
+if (bgColorPicker) {
+    bgColorPicker.addEventListener('input', (e) => {
+        scene.background = new THREE.Color((e.target as HTMLInputElement).value);
+    });
+}
 
-// if "infinite" rerendering keeps occurring, uncomment below and replace render loop with this
-// const ro = new ResizeObserver(resizeToViewer);
-// ro.observe(viewer);
-//
-// let rafId = 0;
-// function animate() {
-//     rafId = requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-// }
-// animate();
-//
-// // ---- Vite HMR cleanup ----
-// if (import.meta.hot) {
-//     import.meta.hot.dispose(() => {
-//         cancelAnimationFrame(rafId);
-//         ro.disconnect();
-//         controls.dispose();
-//         renderer.dispose();
-//         renderer.domElement.remove();
-//     });
-// }
+// 2. Model Color
+if (modelColorPicker) {
+    modelColorPicker.addEventListener('input', (e) => {
+        if (!currentModel) return;
+        const colorHex = (e.target as HTMLInputElement).value;
+        const newColor = new THREE.Color(colorHex);
+        currentModel.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                materials.forEach((mat) => {
+                    if ((mat as THREE.MeshStandardMaterial).color) {
+                        (mat as THREE.MeshStandardMaterial).color.set(newColor);
+                    }
+                });
+            }
+        });
+    });
+}
+
+// ==========================================
+// Meshmixer Style: Reduce Logic
+// ==========================================
+
+// 3. Toggle Mode (Percentage vs Budget)
+if (reduceTargetSelect) {
+    reduceTargetSelect.addEventListener('change', () => {
+        const mode = reduceTargetSelect.value;
+        if (mode === 'percentage') {
+            if (controlPercent) controlPercent.style.display = 'block';
+            if (controlBudget) controlBudget.style.display = 'none';
+        } else {
+            if (controlPercent) controlPercent.style.display = 'none';
+            if (controlBudget) controlBudget.style.display = 'block';
+            // Update input with current vertex count
+            updateBudgetInputFromCurrent();
+        }
+    });
+}
+
+// 4. Perform Simplification Function
+function performSimplification(targetType: 'ratio' | 'count', value: number) {
+    if (!currentModel) return;
+
+    setStatus("Computing simplification...");
+
+    setTimeout(() => {
+        let currentTotalVerts = 0;
+
+        currentModel!.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                
+                // Ensure Backup
+                if (!mesh.userData.originalGeometry) {
+                    mesh.userData.originalGeometry = mesh.geometry.clone();
+                }
+                const originalGeo = mesh.userData.originalGeometry;
+                const origCount = originalGeo.attributes.position.count;
+
+                let targetCount = 0;
+
+                if (targetType === 'ratio') {
+                    // Ratio mode: value is 0.0 ~ 1.0 (keep ratio)
+                    // Meshmixer logic: 100% = original, 0% = nothing
+                    targetCount = Math.floor(origCount * value);
+                } else {
+                    // Budget mode: distribute budget roughly based on ratio
+                    const globalOrig = parseInt(originalCountLabel?.textContent || "1");
+                    const globalRatio = value / globalOrig;
+                    targetCount = Math.floor(origCount * globalRatio);
+                }
+
+                // Safety checks
+                if (targetCount >= origCount) {
+                    mesh.geometry.dispose();
+                    mesh.geometry = originalGeo.clone();
+                    currentTotalVerts += origCount;
+                    return;
+                }
+                if (targetCount < 4) targetCount = 4;
+
+                try {
+                    const simplified = modifier.modify(originalGeo.clone(), targetCount);
+                    mesh.geometry.dispose();
+                    mesh.geometry = simplified;
+                    currentTotalVerts += simplified.attributes.position.count;
+                } catch (e) {
+                    console.error("Simplify failed", e);
+                    // Fallback to original
+                    mesh.geometry.dispose();
+                    mesh.geometry = originalGeo.clone();
+                    currentTotalVerts += origCount;
+                }
+            }
+        });
+
+        if (polyCountLabel) polyCountLabel.textContent = `Current Vertices: ${currentTotalVerts}`;
+        
+        // Update the OTHER UI to match
+        if (targetType === 'ratio') {
+            if (budgetInput) budgetInput.value = currentTotalVerts.toString();
+        } else {
+            // Optional: Update slider position if budget changed it significantly
+            // (Skipped for simplicity to avoid loop)
+        }
+        
+        setStatus("Simplification complete");
+    }, 50);
+}
+
+// 5. Slider Events
+if (meshSlider) {
+    meshSlider.addEventListener('input', () => {
+        if (meshValue) {
+            meshValue.textContent = `${meshSlider.value}% (Release)`;
+            meshValue.style.color = '#ffff00';
+        }
+    });
+
+    meshSlider.addEventListener('change', () => {
+        const percent = parseInt(meshSlider.value);
+        if (meshValue) {
+            meshValue.textContent = `${percent}%`;
+            meshValue.style.color = '#ff9800';
+        }
+        // Convert 0-100 to 0.0-1.0
+        performSimplification('ratio', percent / 100);
+    });
+}
+
+// 6. Budget Apply Button
+if (btnApplyBudget && budgetInput) {
+    btnApplyBudget.addEventListener('click', () => {
+        const budget = parseInt(budgetInput.value);
+        if (isNaN(budget) || budget < 4) {
+            alert("Please enter a valid vertex count");
+            return;
+        }
+        performSimplification('count', budget);
+    });
+}
 
 
-// ---------- Render Loop ----------
+// ---------- Resize & Animate ----------
+function resizeToViewer() {
+    const w = viewer.clientWidth;
+    const h = viewer.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resizeToViewer);
+new ResizeObserver(resizeToViewer).observe(viewer);
+resizeToViewer();
+
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
 }
 animate();
-
-const bgColorPicker = document.getElementById('bgColorPicker') as HTMLInputElement;
-
-if (bgColorPicker) {
-    bgColorPicker.addEventListener('input', (e) => {
-        const color = (e.target as HTMLInputElement).value;
-        scene.background = new THREE.Color(color);
-    });
-}
