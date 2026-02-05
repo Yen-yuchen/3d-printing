@@ -110,14 +110,20 @@ class PickHelper {
                     //add new vertex spheres
                 }
                 else if (mesh.geometry.type === 'SphereGeometry'){
-                    mesh.geometry = removeVertexFromMesh(mesh.geometry, mesh.userData.vertexIndex);
+                    let currentMesh: THREE.Mesh;
+                    if(currentModel?.type !=='Mesh'){
+                        currentMesh = currentModel?.children[0] as THREE.Mesh;
+                    } else{
+                        currentMesh = currentModel as THREE.Mesh;
+                    }
+                    removeVertexAndFacesIndexed(currentMesh.geometry, mesh.userData.vertexIndex);
                     //remove faces
                     //remove vertex and adjust vertices
                 }
                 else{
                     
                     //Otherwise we don't care what we clicked.
-                    return;s
+                    return;
                 }
                 console.log(this.intersection);
                 console.log(currentModel);
@@ -358,6 +364,107 @@ function removeVertexSpheres(){
     }
     
 }
+
+function removeVertexAndFacesIndexed(geometry: THREE.BufferGeometry, vertexIndex: number) {
+    // Get the index buffer (face data)
+    let index = geometry.index;
+    if (!index) {
+        console.warn("Geometry does not have an index buffer");
+        return;
+    }
+
+    // Convert index to array if needed
+    const indexArray = Array.from(index.array as Uint32Array | Uint16Array);
+    
+    // Find all faces (triplets of indices) that contain the vertex
+    const facesToRemove: number[] = [];
+    for (let i = 0; i < indexArray.length; i += 3) {
+        if (indexArray[i] === vertexIndex || 
+            indexArray[i + 1] === vertexIndex || 
+            indexArray[i + 2] === vertexIndex) {
+            facesToRemove.push(i);
+        }
+    }
+
+    // Remove faces by filtering out the indices
+    const newIndexArray: number[] = [];
+    for (let i = 0; i < indexArray.length; i += 3) {
+        if (!facesToRemove.includes(i)) {
+            newIndexArray.push(indexArray[i], indexArray[i + 1], indexArray[i + 2]);
+        }
+    }
+
+    // Create mapping from old vertex indices to new indices (after removal)
+    const vertexRemovalMap = new Map<number, number>();
+    let newIndex = 0;
+    for (let i = 0; i < index.count; i++) {
+        if (i !== vertexIndex) {
+            vertexRemovalMap.set(i, newIndex);
+            newIndex++;
+        }
+    }
+
+    // Update indices in newIndexArray based on the removal map
+    for (let i = 0; i < newIndexArray.length; i++) {
+        const oldIdx = newIndexArray[i];
+        const mappedIdx = vertexRemovalMap.get(oldIdx);
+        if (mappedIdx !== undefined) {
+            newIndexArray[i] = mappedIdx;
+        }
+    }
+
+    // Get all vertex attributes and rebuild them without the removed vertex
+    const attributes = geometry.attributes;
+    const attrNames = Object.keys(attributes);
+    
+    for (const attrName of attrNames) {
+        const attr = attributes[attrName];
+        const oldArray = attr.array as any;
+        const itemSize = attr.itemSize;
+        
+        // Build new attribute array by skipping the removed vertex
+        const newArray = new (oldArray.constructor as any)(
+            (index.count - 1) * itemSize
+        );
+        
+        let newPos = 0;
+        for (let i = 0; i < index.count; i++) {
+            if (i !== vertexIndex) {
+                // Copy all components for this vertex
+                for (let j = 0; j < itemSize; j++) {
+                    newArray[newPos * itemSize + j] = oldArray[i * itemSize + j];
+                }
+                newPos++;
+            }
+        }
+        
+        const newAttr = new THREE.BufferAttribute(newArray, itemSize);
+        newAttr.needsUpdate = true;
+        geometry.setAttribute(attrName, newAttr);
+    }
+
+    // Update index buffer after attributes are set
+    const IndexType = index.array instanceof Uint32Array ? Uint32Array : Uint16Array;
+    const newIndexBuffer = new THREE.BufferAttribute(new IndexType(newIndexArray), 1);
+    newIndexBuffer.needsUpdate = true;
+    geometry.setIndex(newIndexBuffer);
+
+    // Update geometry and notify three.js of changes
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    
+    // Force re-render
+    if (currentModel) {
+        currentModel.traverse((child: any) => {
+            if (child.isMesh) {
+                child.geometry.dispose();
+                child.geometry = geometry;
+            }
+        });
+    }
+}
+
 
 async function loadSelection(files: FileList) {
     const selected = Array.from(files);
@@ -626,3 +733,15 @@ function animate() {
     renderer.render(scene, camera);
 }
 animate();
+
+// ---------- Mesh Utility Functions ----------
+
+/**
+ * Removes a vertex from an indexed BufferGeometry mesh.
+ * Updates all indices and attributes accordingly.
+ * 
+ * @param geometry - The BufferGeometry to modify
+ * @param vertexIndex - The index of the vertex to remove (0-based)
+ * @returns The modified geometry
+ */
+
