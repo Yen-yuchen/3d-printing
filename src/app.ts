@@ -100,26 +100,27 @@ class PickHelper {
                     return;
                 }
                 const mesh = this.intersection.object as THREE.Mesh;
+
+                console.log(currentModel);
                 removeVertexSpheres();
                 if(mesh.geometry.type === 'BufferGeometry'){
-                    //remove current vertex spheres
                     if(this.intersection.face){
                         addVertexSpheres(this.intersection.face, mesh);
                     }
                     //add new vertex spheres
                 }
                 else if (mesh.geometry.type === 'SphereGeometry'){
-                    //remove vertex spheres
-                    //removeVertex()
+                    mesh.geometry = removeVertexFromMesh(mesh.geometry, mesh.userData.vertexIndex);
                     //remove faces
                     //remove vertex and adjust vertices
                 }
                 else{
                     
                     //Otherwise we don't care what we clicked.
-                    return;
+                    return;s
                 }
                 console.log(this.intersection);
+                console.log(currentModel);
                 // if(this.intersection?.face){
                 //     addVertexSpheres(this.intersection?.face, mesh);
                 // }
@@ -308,10 +309,12 @@ function addVertexSpheres(face: THREE.Face, mesh: THREE.Mesh){
         const sphereGeom = new THREE.SphereGeometry(0.02, 16, 16);
         const sphereMat = new THREE.MeshStandardMaterial({color: 0xff0000});
         const sphereMesh = new THREE.Mesh(sphereGeom, sphereMat);
+        sphereMesh.userData = {vertexIndex: i};
         
         const pivot = new THREE.Object3D();
         pivot.position.copy(currentModel?.worldToLocal(vertex) ?? new THREE.Vector3(0,0,0));
         pivot.add(sphereMesh);
+        pivot.userData = {pivot: true};
         
         sphereMesh.position.set(0,0,0);
 
@@ -325,17 +328,20 @@ function addVertexSpheres(face: THREE.Face, mesh: THREE.Mesh){
 
 function removeVertexSpheres(){
     /*
-    What we have:
-        object
-            pivots
-                sphere meshes
-    
+    This should work? I might be missing something by not setting stuff to null, but other than that I think this is fine.
     */
     if(!currentModel){
         return;
     }
-    while (currentModel?.children.length > 0){
-        let pivot = currentModel.children[0];
+    let numChildrenChecked = currentModel?.children.length;
+    let firstChild = 0;
+    while (numChildrenChecked > 0){
+        numChildrenChecked--;
+        if(!currentModel?.children[firstChild].userData?.pivot){
+            firstChild++;
+            continue;
+        }
+        let pivot = currentModel.children[firstChild];
         let mesh = pivot.children[0] as THREE.Mesh;
 
         pivot.remove(mesh);
