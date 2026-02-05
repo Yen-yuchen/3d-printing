@@ -1,8 +1,13 @@
 import * as THREE from "three";
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+import { ThreeMFLoader } from "three/examples/jsm/Addons.js";
+
+
+
 
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 
@@ -106,7 +111,7 @@ controls.enableDamping = true;
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 const dir = new THREE.DirectionalLight(0xffffff, 1);
 dir.position.set(5, 10, 5);
-scene.add(dir);
+camera.add(dir);
 
 // ---------- Demo Mesh (until model is loaded) ----------
 const cube = new THREE.Mesh(
@@ -135,13 +140,96 @@ const scaleSlider = document.getElementById("scale") as HTMLInputElement | null;
 
 const resetCamBtn = document.getElementById("resetCam") as HTMLButtonElement | null;
 
+// ---------- Mouse Selection ----------
+
+//Sources: 
+//  https://threejs.org/manual/#en/picking
+
+const pickPosition = new THREE.Vector2(0,0)
+clearPickPosition();
+
+class PickHelper {
+    raycaster: THREE.Raycaster;
+    intersection: THREE.Intersection | null;
+    prevIntersection: THREE.Intersection | null;
+
+    constructor(){
+        this.raycaster = new THREE.Raycaster();
+        this.intersection = null;
+        this.prevIntersection = null;
+    }
+    pick(normalizedPosition: THREE.Vector2, scene: THREE.Scene, camera: THREE.Camera){
+			this.raycaster.setFromCamera(normalizedPosition, camera );
+			let intersectedObjects = this.raycaster.intersectObjects(scene.children);
+
+			if (intersectedObjects.length) {
+			    this.intersection = intersectedObjects.filter((intersect) => {
+                    if(intersect?.object){
+                        return intersect.object.type == 'Mesh';
+                    }
+                    return false;
+                })[0] ?? null; //Return the first intersected mesh or null if no meshes are intersected.
+
+                if(!this.intersection){
+                    return;
+                }
+                const mesh = this.intersection.object as THREE.Mesh;
+
+                console.log(currentModel);
+                removeVertexSpheres();
+                if(mesh.geometry.type === 'BufferGeometry'){
+                    if(this.intersection.face){
+                        addVertexSpheres(this.intersection.face, mesh);
+                    }
+                    //add new vertex spheres
+                }
+                else if (mesh.geometry.type === 'SphereGeometry'){
+                    let currentMesh: THREE.Mesh;
+                    if(currentModel?.type !=='Mesh'){
+                        currentMesh = currentModel?.children[0] as THREE.Mesh;
+                    } else{
+                        currentMesh = currentModel as THREE.Mesh;
+                    }
+                    removeVertexAndFacesIndexed(currentMesh.geometry, mesh.userData.vertexIndex);
+                    //remove faces
+                    //remove vertex and adjust vertices
+                }
+                else{
+                    
+                    //Otherwise we don't care what we clicked.
+                    return;
+                }
+                console.log(this.intersection);
+                console.log(currentModel);
+                // if(this.intersection?.face){
+                //     addVertexSpheres(this.intersection?.face, mesh);
+                // }
+                
+                
+            }
+
+            
+            
+            
+    }
+
+}
+window.addEventListener('click', () => {
+    pickHelper.pick(pickPosition, scene, camera);
+})
+window.addEventListener('mousemove', setPickPosition);
+window.addEventListener('mouseout', clearPickPosition);
+window.addEventListener('mouseleave', clearPickPosition);
 // ---------- Loaders ----------
 // Note: for .gltf packages (gltf + .bin + textures), we create a loader with a custom LoadingManager
 // so dependent files can be resolved from the user's uploaded FileList.
 const stlLoader = new STLLoader();
 const objLoader = new OBJLoader();
 
-// ---------- Helpers ----------
+
+
+
+// ---------- Helpers ---------
 function setStatus(msg: string) {
     if (statusEl) statusEl.textContent = msg;
 }
@@ -267,6 +355,192 @@ function collectExternalUris(gltfJson: any): Set<string> {
     return uris;
 }
 
+function getCanvasRelativePosition(event: any) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) * canvas.width  / rect.width,
+    y: (event.clientY - rect.top ) * canvas.height / rect.height,
+  };
+}
+ 
+function setPickPosition(event: any) {
+  const pos = getCanvasRelativePosition(event);
+  pickPosition.x = (pos.x / canvas.width ) *  2 - 1;
+  pickPosition.y = (pos.y / canvas.height) * -2 + 1; 
+}
+ 
+function clearPickPosition() {
+  pickPosition.x = -100000;
+  pickPosition.y = -100000;
+}
+
+function addVertexSpheres(face: THREE.Face, mesh: THREE.Mesh){
+    const vertexPositions = mesh.geometry.attributes.position
+    const vertexIndexes  = [face.a, face.b, face.c];
+    mesh.updateMatrixWorld();
+    for(let i = 0; i < vertexIndexes.length; i++){
+         let vertex = new THREE.Vector3(
+            vertexPositions.getX(vertexIndexes[i]), 
+            vertexPositions.getY(vertexIndexes[i]), 
+            vertexPositions.getZ(vertexIndexes[i]));
+        //console.log("BEFORE VERTEX ", i, ": ", vertex);
+        vertex.applyMatrix4(mesh.matrixWorld);
+        //console.log("AFTER VERTEX ", i, ": ", vertex);
+        const sphereGeom = new THREE.SphereGeometry(0.02, 16, 16);
+        const sphereMat = new THREE.MeshStandardMaterial({color: 0xff0000});
+        const sphereMesh = new THREE.Mesh(sphereGeom, sphereMat);
+        sphereMesh.userData = {vertexIndex: vertexIndexes[i]};
+        
+        const pivot = new THREE.Object3D();
+        pivot.position.copy(currentModel?.worldToLocal(vertex) ?? new THREE.Vector3(0,0,0));
+        pivot.add(sphereMesh);
+        pivot.userData = {pivot: true};
+        
+        sphereMesh.position.set(0,0,0);
+
+        currentModel?.add(pivot);
+    }
+
+
+    //const face = intersection.face;
+    //const vertA = intersection.object.geometry.attributes.position
+}
+
+function removeVertexSpheres(){
+    /*
+    This should work? I might be missing something by not setting stuff to null, but other than that I think this is fine.
+    */
+    if(!currentModel){
+        return;
+    }
+    let numChildrenChecked = currentModel?.children.length;
+    let firstChild = 0;
+    while (numChildrenChecked > 0){
+        numChildrenChecked--;
+        if(!currentModel?.children[firstChild].userData?.pivot){
+            firstChild++;
+            continue;
+        }
+        let pivot = currentModel.children[firstChild];
+        let mesh = pivot.children[0] as THREE.Mesh;
+
+        pivot.remove(mesh);
+        currentModel.remove(pivot);
+
+        if(mesh.geometry){
+            mesh.geometry.dispose();
+        }
+        if(Array.isArray(mesh.material)){
+            mesh.material.forEach(child => child.dispose());
+        } else{
+            mesh.material.dispose();
+        }
+    }
+    
+}
+
+function removeVertexAndFacesIndexed(geometry: THREE.BufferGeometry, vertexIndex: number) {
+    console.log("Removing vertex index: ", vertexIndex);
+    // Get the index buffer (face data)
+    let index = geometry.index;
+    if (!index) {
+        console.warn("Geometry does not have an index buffer");
+        return;
+    }
+
+    // Convert index to array if needed
+    const indexArray = Array.from(index.array as Uint32Array | Uint16Array);
+    
+    // Find all faces (triplets of indices) that contain the vertex
+    const facesToRemove: number[] = [];
+    for (let i = 0; i < indexArray.length; i += 3) {
+        if (indexArray[i] === vertexIndex || 
+            indexArray[i + 1] === vertexIndex || 
+            indexArray[i + 2] === vertexIndex) {
+            facesToRemove.push(i);
+        }
+    }
+
+    // Remove faces by filtering out the indices
+    const newIndexArray: number[] = [];
+    for (let i = 0; i < indexArray.length; i += 3) {
+        if (!facesToRemove.includes(i)) {
+            newIndexArray.push(indexArray[i], indexArray[i + 1], indexArray[i + 2]);
+        }
+    }
+
+    // Create mapping from old vertex indices to new indices (after removal)
+    const vertexRemovalMap = new Map<number, number>();
+    let newIndex = 0;
+    for (let i = 0; i < index.count; i++) {
+        if (i !== vertexIndex) {
+            vertexRemovalMap.set(i, newIndex);
+            newIndex++;
+        }
+    }
+
+    // Update indices in newIndexArray based on the removal map
+    for (let i = 0; i < newIndexArray.length; i++) {
+        const oldIdx = newIndexArray[i];
+        const mappedIdx = vertexRemovalMap.get(oldIdx);
+        if (mappedIdx !== undefined) {
+            newIndexArray[i] = mappedIdx;
+        }
+    }
+
+    // Get all vertex attributes and rebuild them without the removed vertex
+    const attributes = geometry.attributes;
+    const attrNames = Object.keys(attributes);
+    
+    for (const attrName of attrNames) {
+        const attr = attributes[attrName];
+        const oldArray = attr.array as any;
+        const itemSize = attr.itemSize;
+        
+        // Build new attribute array by skipping the removed vertex
+        const newArray = new (oldArray.constructor as any)(
+            (index.count - 1) * itemSize
+        );
+        
+        let newPos = 0;
+        for (let i = 0; i < index.count; i++) {
+            if (i !== vertexIndex) {
+                // Copy all components for this vertex
+                for (let j = 0; j < itemSize; j++) {
+                    newArray[newPos * itemSize + j] = oldArray[i * itemSize + j];
+                }
+                newPos++;
+            }
+        }
+        
+        const newAttr = new THREE.BufferAttribute(newArray, itemSize);
+        newAttr.needsUpdate = true;
+        geometry.setAttribute(attrName, newAttr);
+    }
+
+    // Update index buffer after attributes are set
+    const IndexType = index.array instanceof Uint32Array ? Uint32Array : Uint16Array;
+    const newIndexBuffer = new THREE.BufferAttribute(new IndexType(newIndexArray), 1);
+    newIndexBuffer.needsUpdate = true;
+    geometry.setIndex(newIndexBuffer);
+
+    // Update geometry and notify three.js of changes
+    geometry.attributes.position.needsUpdate = true;
+    //geometry.computeBoundingBox();
+    //geometry.computeBoundingSphere();
+    
+    // Force re-render
+    if (currentModel) {
+        currentModel.traverse((child: any) => {
+            if (child.isMesh) {
+                child.geometry.dispose();
+                child.geometry = geometry;
+            }
+        });
+    }
+}
+
+
 async function loadSelection(files: FileList) {
     const selected = Array.from(files);
     if (selected.length === 0) return;
@@ -341,6 +615,13 @@ async function loadSelection(files: FileList) {
         const onLoaded = (object: THREE.Object3D) => {
             clearCurrentModel();
             currentModel = object;
+            object.traverse((child: any) =>{
+                if(child?.geometry?.isBufferGeometry){
+                    console.log("Before merge: ", child.geometry.attributes.position.count)
+                    child.geometry = BufferGeometryUtils.mergeVertices(child.geometry, 0.001);
+                    console.log("After merge: ", child.geometry.attributes.position.count);
+                }
+            })
             scene.add(object);
             cube.visible = false;
 
@@ -381,10 +662,18 @@ async function loadSelection(files: FileList) {
     const name = mainSingle.name.toLowerCase();
     const url = URL.createObjectURL(mainSingle);
 
-    const onLoaded = (object: THREE.Object3D) => {
+    const onLoaded = (object: THREE.Mesh) => {
         clearCurrentModel();
-
         currentModel = object;
+
+        object.traverse((child: any) =>{
+                if(child?.geometry?.isBufferGeometry){
+                    console.log("Before merge: ", child.geometry.attributes.position.count)
+                    child.geometry = BufferGeometryUtils.mergeVertices(child.geometry, 0.001);
+                    console.log("After merge: ", child.geometry.attributes.position.count);
+                }
+        })
+
         scene.add(object);
         cube.visible = false;
 
@@ -511,6 +800,8 @@ applyWireframe();
 
 
 // ---------- Render Loop ----------
+const pickHelper = new PickHelper();
+
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
