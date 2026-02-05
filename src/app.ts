@@ -67,8 +67,8 @@ meshSlider.addEventListener('change', () => {
 
                 try {
                     
-                    const simplified = simplifyModifier.modify(originalGeo.clone(), safeRemoveCount);
-                    
+                    let simplified = simplifyModifier.modify(originalGeo.clone(), safeRemoveCount);
+                    simplified = BufferGeometryUtils.mergeVertices(simplified, 0.001);
                     mesh.geometry.dispose();
                     mesh.geometry = simplified;
                     
@@ -170,13 +170,14 @@ class PickHelper {
                     return false;
                 })[0] ?? null; //Return the first intersected mesh or null if no meshes are intersected.
 
+                removeVertexSpheres();
+
                 if(!this.intersection){
                     return;
                 }
                 const mesh = this.intersection.object as THREE.Mesh;
 
-                console.log(currentModel);
-                removeVertexSpheres();
+                //console.log(currentModel);
                 if(mesh.geometry.type === 'BufferGeometry'){
                     if(this.intersection.face){
                         addVertexSpheres(this.intersection.face, mesh);
@@ -190,27 +191,12 @@ class PickHelper {
                     } else{
                         currentMesh = currentModel as THREE.Mesh;
                     }
-                    removeVertexAndFacesIndexed(currentMesh.geometry, mesh.userData.vertexIndex);
-                    //remove faces
-                    //remove vertex and adjust vertices
+                    removeVertexAndFacesIndexed(currentMesh.geometry, mesh.userData.vertexIndex);        
                 }
                 else{
-                    
-                    //Otherwise we don't care what we clicked.
                     return;
                 }
-                console.log(this.intersection);
-                console.log(currentModel);
-                // if(this.intersection?.face){
-                //     addVertexSpheres(this.intersection?.face, mesh);
-                // }
-                
-                
-            }
-
-            
-            
-            
+            } 
     }
 
 }
@@ -440,6 +426,10 @@ function removeVertexSpheres(){
 }
 
 function removeVertexAndFacesIndexed(geometry: THREE.BufferGeometry, vertexIndex: number) {
+    /*
+    NOTE:
+        This function was generated with the help of GitHub Copilot.
+    */
     console.log("Removing vertex index: ", vertexIndex);
     // Get the index buffer (face data)
     let index = geometry.index;
