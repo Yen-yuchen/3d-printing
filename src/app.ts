@@ -315,7 +315,7 @@ function addVertexSpheres(face: THREE.Face, mesh: THREE.Mesh){
         const sphereGeom = new THREE.SphereGeometry(0.02, 16, 16);
         const sphereMat = new THREE.MeshStandardMaterial({color: 0xff0000});
         const sphereMesh = new THREE.Mesh(sphereGeom, sphereMat);
-        sphereMesh.userData = {vertexIndex: i};
+        sphereMesh.userData = {vertexIndex: vertexIndexes[i]};
         
         const pivot = new THREE.Object3D();
         pivot.position.copy(currentModel?.worldToLocal(vertex) ?? new THREE.Vector3(0,0,0));
@@ -366,6 +366,7 @@ function removeVertexSpheres(){
 }
 
 function removeVertexAndFacesIndexed(geometry: THREE.BufferGeometry, vertexIndex: number) {
+    console.log("Removing vertex index: ", vertexIndex);
     // Get the index buffer (face data)
     let index = geometry.index;
     if (!index) {
@@ -451,8 +452,8 @@ function removeVertexAndFacesIndexed(geometry: THREE.BufferGeometry, vertexIndex
 
     // Update geometry and notify three.js of changes
     geometry.attributes.position.needsUpdate = true;
-    geometry.computeBoundingBox();
-    geometry.computeBoundingSphere();
+    //geometry.computeBoundingBox();
+    //geometry.computeBoundingSphere();
     
     // Force re-render
     if (currentModel) {
