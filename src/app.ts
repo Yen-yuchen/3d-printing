@@ -429,13 +429,32 @@ function performSimplification(targetType: 'ratio' | 'count', value: number) {
                     targetCount = Math.floor(origCount * (1 - value));
                 } else {
                     const globalOrig = parseInt(originalCountLabel?.textContent || "1");
-                    const globalRatio = value / globalOrig;
-                    targetCount = Math.floor(origCount * globalRatio);
+                    let removeRatio = value / globalOrig;
+
+                    
+                    if (removeRatio > 1) removeRatio = 1;
+                    if (removeRatio < 0) removeRatio = 0;
+
+                    targetCount = Math.floor(origCount * (1 - removeRatio));
+                    //const globalRatio = value / globalOrig;
+                    //targetCount = Math.floor(origCount * globalRatio);
                 }
 
                
-                const minLimit = 10;
-                if (targetCount < minLimit) targetCount = minLimit;
+                //const minLimit = 10;
+                //if (targetCount < minLimit) targetCount = minLimit;
+                const absoluteMin = 50; 
+
+
+                const percentageMin = Math.floor(origCount * 0.01); 
+
+
+                const minLimit = Math.max(absoluteMin, percentageMin);
+
+
+                if (targetCount < minLimit) {
+                    targetCount = minLimit;
+                }
 
                 if (targetCount >= origCount * 0.99) {
                     mesh.geometry.dispose();
