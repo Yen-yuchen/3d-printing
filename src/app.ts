@@ -403,7 +403,7 @@ if (reduceTargetSelect) {
     });
 }
 
-// 4. Perform Simplification Function
+
 function performSimplification(targetType: 'ratio' | 'count', value: number) {
     if (!currentModel) return;
 
@@ -416,7 +416,6 @@ function performSimplification(targetType: 'ratio' | 'count', value: number) {
             if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
                 
-                // Ensure Backup
                 if (!mesh.userData.originalGeometry) {
                     mesh.userData.originalGeometry = mesh.geometry.clone();
                 }
@@ -426,33 +425,33 @@ function performSimplification(targetType: 'ratio' | 'count', value: number) {
                 let targetCount = 0;
 
                 if (targetType === 'ratio') {
-                    // Ratio mode: value is 0.0 ~ 1.0 (keep ratio)
-                    // Meshmixer logic: 100% = original, 0% = nothing
-                    targetCount = Math.floor(origCount * value);
+                    
+                    targetCount = Math.floor(origCount * (1 - value));
                 } else {
-                    // Budget mode: distribute budget roughly based on ratio
                     const globalOrig = parseInt(originalCountLabel?.textContent || "1");
                     const globalRatio = value / globalOrig;
                     targetCount = Math.floor(origCount * globalRatio);
                 }
 
-                // Safety checks
-                if (targetCount >= origCount) {
+               
+                const minLimit = 10;
+                if (targetCount < minLimit) targetCount = minLimit;
+
+                if (targetCount >= origCount * 0.99) {
                     mesh.geometry.dispose();
                     mesh.geometry = originalGeo.clone();
                     currentTotalVerts += origCount;
                     return;
                 }
-                if (targetCount < 4) targetCount = 4;
 
                 try {
                     const simplified = modifier.modify(originalGeo.clone(), targetCount);
+                    
                     mesh.geometry.dispose();
                     mesh.geometry = simplified;
                     currentTotalVerts += simplified.attributes.position.count;
                 } catch (e) {
                     console.error("Simplify failed", e);
-                    // Fallback to original
                     mesh.geometry.dispose();
                     mesh.geometry = originalGeo.clone();
                     currentTotalVerts += origCount;
@@ -461,14 +460,6 @@ function performSimplification(targetType: 'ratio' | 'count', value: number) {
         });
 
         if (polyCountLabel) polyCountLabel.textContent = `Current Vertices: ${currentTotalVerts}`;
-        
-        // Update the OTHER UI to match
-        if (targetType === 'ratio') {
-            if (budgetInput) budgetInput.value = currentTotalVerts.toString();
-        } else {
-            // Optional: Update slider position if budget changed it significantly
-            // (Skipped for simplicity to avoid loop)
-        }
         
         setStatus("Simplification complete");
     }, 50);
