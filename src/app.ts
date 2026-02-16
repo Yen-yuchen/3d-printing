@@ -363,6 +363,63 @@ if (bgColorPicker) {
     });
 }
 
+//testing heatmap
+viewer.addEventListener("click", () => {
+    const colors = [];
+    //console.log(currentModel);
+    let position;
+    let mesh = getMesh(currentModel);
+    console.log(currentModel);
+    //console.log("Z")
+    if(mesh){
+        //console.log("A")
+        if(mesh.geometry.isBufferGeometry){
+            //console.log("B")
+            position = mesh.geometry?.attributes.position;
+        }
+        if(position){
+            //console.log("C")
+            for (let i = 0; i < position.count; i++) {
+                // Example: heat value based on Y position
+                const y = position.getY(i);
+                const heatValue = (y + 1) / 2; // normalize 0..1
+                const color = new THREE.Color();
+                color.setHSL((1 - heatValue) * 0.7, 1.0, 0.5); // blue→red gradient
+                colors.push(color.r, color.g, color.b);
+            }
+            mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            const material = mesh.material as THREE.Material;
+            material.vertexColors = true;
+            material.needsUpdate = true;
+        }
+    }
+})
+
+function getMesh(object: THREE.Object3D | null): THREE.Mesh | null{
+    if(object?.type == "Mesh"){
+        return object as THREE.Mesh;
+    }
+    if (!(object instanceof THREE.Object3D)) {
+        console.error("Provided object is not a THREE.Object3D or Group.");
+        return null;
+    }
+
+    // Search through children
+    for (let child of object.children) {
+        if (child.type == "Mesh") {
+            return child as THREE.Mesh; // Found the first mesh
+        }
+        // If the child is another group or Object3D, search inside it
+        if (child.children && child.children.length > 0) {
+            const mesh = getMesh(child);
+            if (mesh) return mesh;
+        }
+    }
+
+    // No mesh found
+    return null;
+}
+
 // 2. Model Color
 if (modelColorPicker) {
     modelColorPicker.addEventListener('input', (e) => {
