@@ -399,8 +399,8 @@ viewer.addEventListener("click", () => {
                     minY = y
                 }
             }   
-            console.log("maxY: ", maxY);
-            console.log("minY: ", minY);
+            //console.log("maxY: ", maxY);
+            //console.log("minY: ", minY);
             let maxHeat = -Infinity;
             let minHeat = Infinity;
             for (let i = 0; i < yValues.length; i++) {
@@ -421,11 +421,11 @@ viewer.addEventListener("click", () => {
                     Then the y value is divided by maxY - minY so the range of possible y values is [0,1]
                 */
                 const color = new THREE.Color();
-                color.setHSL((1 - heatValue), 1.0, 0.5); // blue→red gradient
+                color.setHSL((1 - heatValue) * 0.66, 1.0, 0.5); // blue→red gradient
                 colors.push(color.r, color.g, color.b);
             }
-            console.log("maxHeat: ", maxHeat);
-                console.log("minHeat: ", minHeat);
+            //console.log("maxHeat: ", maxHeat);
+            //console.log("minHeat: ", minHeat);
             mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
             const material = mesh.material as THREE.Material;
             material.vertexColors = true;
