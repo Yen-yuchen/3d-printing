@@ -393,11 +393,19 @@ viewer.addEventListener("click", () => {
             }   
 
             for (let i = 0; i < position.count; i++) {
-                // Example: heat value based on Y position
-                const heatValue = (position.getY(i) - minY) / (maxY - minY);
-                //const heatValue = (y + 1) / 2; // normalize 0..1
+                // Heat value based on Y position
+                let vertex: THREE.Vector3 = new THREE.Vector3;
+                vertex = vertex.fromBufferAttribute(position, i);
+                vertex = mesh.localToWorld(vertex);
+                const heatValue = (vertex.y - minY) / (maxY - minY);
+                /*
+                Explanation: 
+                    Default range of y values is [minY, maxY]
+                    First minY is subtracted so the range becomes [0, maxY - minY]
+                    Then the y value is divided by maxY - minY so the range of possible y values is [0,1]
+                */
                 const color = new THREE.Color();
-                color.setHSL((1 - heatValue) * 0.7 - 0.02, 1.0, 0.5); // blue→red gradient
+                color.setHSL((1 - heatValue) * 0.7, 1.0, 0.5); // blue→red gradient
                 colors.push(color.r, color.g, color.b);
             }
             mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
