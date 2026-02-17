@@ -379,12 +379,25 @@ viewer.addEventListener("click", () => {
         }
         if(position){
             //console.log("C")
+            let maxY = -Infinity;
+            let minY = Infinity;
+            
+            for(let i = 0; i < position.count; i++){
+                const y = position.getY(i);
+                if(maxY < y){
+                    maxY = y
+                }
+                if(minY > y){
+                    minY = y
+                }
+            }   
+
             for (let i = 0; i < position.count; i++) {
                 // Example: heat value based on Y position
-                const y = position.getY(i);
-                const heatValue = (y + 1) / 2; // normalize 0..1
+                const heatValue = (position.getY(i) - minY) / (maxY - minY);
+                //const heatValue = (y + 1) / 2; // normalize 0..1
                 const color = new THREE.Color();
-                color.setHSL((1 - heatValue) * 0.7, 1.0, 0.5); // blue→red gradient
+                color.setHSL((1 - heatValue) * 0.7 - 0.02, 1.0, 0.5); // blue→red gradient
                 colors.push(color.r, color.g, color.b);
             }
             mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
