@@ -366,6 +366,7 @@ if (bgColorPicker) {
 //testing heatmap
 viewer.addEventListener("click", () => {
     const colors = [];
+    const yValues = [];
     //console.log(currentModel);
     let position;
     let mesh = getMesh(currentModel);
@@ -373,17 +374,24 @@ viewer.addEventListener("click", () => {
     //console.log("Z")
     if(mesh){
         //console.log("A")
-        if(mesh.geometry.isBufferGeometry){
+        if(mesh.geometry.isBufferGeometry && !mesh.geometry.hasAttribute("color")){
             //console.log("B")
             position = mesh.geometry?.attributes.position;
         }
         if(position){
+
             //console.log("C")
+            
             let maxY = -Infinity;
             let minY = Infinity;
-            
+            let vertex: THREE.Vector3 = new THREE.Vector3();
             for(let i = 0; i < position.count; i++){
-                const y = position.getY(i);
+                vertex.x = position.getX(i);
+                vertex.y = position.getY(i);
+                vertex.z = position.getZ(i);
+                vertex = mesh.localToWorld(vertex);
+                const y = vertex.y;
+                yValues.push(y);
                 if(maxY < y){
                     maxY = y
                 }
@@ -391,13 +399,21 @@ viewer.addEventListener("click", () => {
                     minY = y
                 }
             }   
-
-            for (let i = 0; i < position.count; i++) {
+            console.log("maxY: ", maxY);
+            console.log("minY: ", minY);
+            let maxHeat = -Infinity;
+            let minHeat = Infinity;
+            for (let i = 0; i < yValues.length; i++) {
                 // Heat value based on Y position
-                let vertex: THREE.Vector3 = new THREE.Vector3;
-                vertex = vertex.fromBufferAttribute(position, i);
-                vertex = mesh.localToWorld(vertex);
-                const heatValue = (vertex.y - minY) / (maxY - minY);
+                const heatValue = (yValues[i] - minY) / (maxY - minY);
+
+                if(heatValue > maxHeat){
+                    maxHeat = heatValue;
+                } else if (heatValue < minHeat){
+                    minHeat = heatValue;
+                }
+
+                
                 /*
                 Explanation: 
                     Default range of y values is [minY, maxY]
@@ -405,9 +421,11 @@ viewer.addEventListener("click", () => {
                     Then the y value is divided by maxY - minY so the range of possible y values is [0,1]
                 */
                 const color = new THREE.Color();
-                color.setHSL((1 - heatValue) * 0.7, 1.0, 0.5); // blue→red gradient
+                color.setHSL((1 - heatValue), 1.0, 0.5); // blue→red gradient
                 colors.push(color.r, color.g, color.b);
             }
+            console.log("maxHeat: ", maxHeat);
+                console.log("minHeat: ", minHeat);
             mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
             const material = mesh.material as THREE.Material;
             material.vertexColors = true;
