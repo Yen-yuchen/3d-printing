@@ -542,7 +542,7 @@ function performSimplification(targetType: 'ratio' | 'count', value: number) {
                 const absoluteMin = 50; 
 
 
-                const percentageMin = Math.floor(origCount * 0.01); 
+                const percentageMin = Math.floor(origCount * 0.3); 
 
 
                 const minLimit = Math.max(absoluteMin, percentageMin);
