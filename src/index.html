@@ -102,6 +102,25 @@
             <div style="margin-top: 10px; border-top: 1px solid #444; padding-top: 5px;">
                 <span id="polyCount" style="color: #888; font-size: 11px;">Current Vertices: 0</span>
             </div>
+
+            <label class="label-title">Checkpoint </label>
+            <div style="display: flex; gap: 5px;">
+                <button id="btnSaveCheckpoint" class="btn-tool" style="flex: 1;">
+                    <i class="fa-solid fa-floppy-disk"></i> Save
+                </button>
+                <button id="btnRestoreCheckpoint" class="btn-tool" style="flex: 1;" disabled>
+                    <i class="fa-solid fa-rotate-left"></i> Restore
+                </button>
+            </div>
+            
+            <button id="btnToggleCheckpoint" class="btn-tool" style="margin-top: 5px;" disabled>
+                <i class=""></i> Show/Hide Overlay
+            </button>
+            
+            <div id="checkpointStatus" style="font-size: 11px; color: #666; margin-top: 5px; text-align: center;">
+                No checkpoint saved
+            </div>
+
         </div>
     </div>
 
