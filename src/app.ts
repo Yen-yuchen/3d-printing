@@ -4,6 +4,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
+import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
 
 // ---------- UI Elements for Meshmixer Tools ----------
 const reduceTargetSelect = document.getElementById('reduceTargetMode') as HTMLSelectElement;
@@ -240,6 +241,14 @@ async function loadSelection(files: FileList) {
         });
 
         currentModel = object;
+        object.traverse((child: any) =>{
+                if(child?.geometry?.isBufferGeometry){
+                    console.log("Before merge: ", child.geometry.attributes.position.count)
+                    child.geometry = BufferGeometryUtils.mergeVertices(child.geometry, 0.001);
+                    console.log("After merge: ", child.geometry.attributes.position.count);
+                }
+            })
+
         scene.add(object);
         cube.visible = false;
 
@@ -366,9 +375,9 @@ if (bgColorPicker) {
 //testing heatmap
 viewer.addEventListener("click", () => {
     const colors = [];
-    const yValues = [];
+    //const yValues = [];
     //console.log(currentModel);
-    let position;
+    let position, index;
     let mesh = getMesh(currentModel);
     console.log(currentModel);
     //console.log("Z")
@@ -377,35 +386,58 @@ viewer.addEventListener("click", () => {
         if(mesh.geometry.isBufferGeometry && !mesh.geometry.hasAttribute("color")){
             //console.log("B")
             position = mesh.geometry?.attributes.position;
+            index = mesh.geometry?.index;
+            
         }
-        if(position){
+        if(position && index){
+            const density: number[] = new Array(index.count).fill(0);
 
             //console.log("C")
             
-            let maxY = -Infinity;
-            let minY = Infinity;
+            // let maxY = -Infinity;
+            // let minY = Infinity;
+            let maxFaceCount = -Infinity;
+            let minFaceCount = Infinity;
+            let faceCount: number = 0;
             let vertex: THREE.Vector3 = new THREE.Vector3();
-            for(let i = 0; i < position.count; i++){
-                vertex.x = position.getX(i);
-                vertex.y = position.getY(i);
-                vertex.z = position.getZ(i);
-                vertex = mesh.localToWorld(vertex);
-                const y = vertex.y;
-                yValues.push(y);
-                if(maxY < y){
-                    maxY = y
+            for(let j = 0; j < index.count; j+=3){
+                density[index.getX(j)]++;
+                density[index.getY(j)]++;
+                density[index.getZ(j)]++;
+            }
+            for(let i = 0; i < density.length; i++){
+                //console.log("density[i]: ", density[i]);
+                faceCount = density[i]
+
+                if(faceCount > maxFaceCount){
+                    maxFaceCount = faceCount;
+                } else if (faceCount < minFaceCount){
+                    minFaceCount = faceCount;
                 }
-                if(minY > y){
-                    minY = y
-                }
+
+                // vertex.x = position.getX(i);
+                // vertex.y = position.getY(i);
+                // vertex.z = position.getZ(i);
+                // vertex = mesh.localToWorld(vertex);
+                // const y = vertex.y;
+                // yValues.push(y);
+                // if(maxY < y){
+                //     maxY = y
+                // }
+                // if(minY > y){
+                //     minY = y
+                // }
             }   
             //console.log("maxY: ", maxY);
             //console.log("minY: ", minY);
             let maxHeat = -Infinity;
             let minHeat = Infinity;
-            for (let i = 0; i < yValues.length; i++) {
+            console.log("MAX FACE: ", maxFaceCount);
+            console.log("MIN FACE: ", minFaceCount);
+            for (let i = 0; i < density.length; i++) {
+                
                 // Heat value based on Y position
-                const heatValue = (yValues[i] - minY) / (maxY - minY);
+                const heatValue = (density[i] - minFaceCount) / (maxFaceCount - minFaceCount);
 
                 if(heatValue > maxHeat){
                     maxHeat = heatValue;
