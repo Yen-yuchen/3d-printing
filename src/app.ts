@@ -5,6 +5,16 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 
+// ---  checkpoint system  ---
+let checkpointGeometry: THREE.BufferGeometry | null = null; 
+let checkpointMesh: THREE.Mesh | null = null; 
+
+// ---  catch UI  ---
+const btnSaveCheckpoint = document.getElementById('btnSaveCheckpoint') as HTMLButtonElement;
+const btnRestoreCheckpoint = document.getElementById('btnRestoreCheckpoint') as HTMLButtonElement;
+const btnToggleCheckpoint = document.getElementById('btnToggleCheckpoint') as HTMLButtonElement;
+const checkpointStatus = document.getElementById('checkpointStatus');
+
 // ---------- UI Elements for Meshmixer Tools ----------
 const reduceTargetSelect = document.getElementById('reduceTargetMode') as HTMLSelectElement;
 const controlPercent = document.getElementById('control-percentage');
@@ -202,7 +212,7 @@ function updateBudgetInputFromCurrent() {
             if (mesh.userData.originalGeometry) {
                 totalOrig += mesh.userData.originalGeometry.attributes.position.count;
             } else {
-                // 如果還沒備份，當作當前就是原始
+                
                 totalOrig += mesh.geometry.attributes.position.count;
             }
         }
@@ -611,7 +621,139 @@ if (btnApplyBudget && budgetInput) {
         performSimplification('count', budget);
     });
 }
+// ==========================================
+// Checkpoint System 
+// ==========================================
 
+
+// make sure all buttons exist before adding event listeners
+if (btnSaveCheckpoint && btnRestoreCheckpoint && btnToggleCheckpoint) {
+    
+    // --- (Save) ---
+    btnSaveCheckpoint.addEventListener('click', () => {
+        if (!currentModel) return;
+        
+        let found = false;
+        currentModel.traverse((child) => {
+            
+            if (!found && (child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                
+                checkpointGeometry = mesh.geometry.clone();
+                found = true;
+            }
+        });
+
+        if (found) {
+            btnRestoreCheckpoint.disabled = false;
+            btnToggleCheckpoint.disabled = false;
+            
+            if (checkpointStatus) {
+                const time = new Date().toLocaleTimeString();
+                checkpointStatus.textContent = `Saved at ${time}`;
+                checkpointStatus.style.color = '#4caf50'; 
+            }
+            
+            updateGhostOverlay();
+            
+            console.log("Checkpoint saved!");
+        }
+    });
+
+    // --- Restore ---
+    btnRestoreCheckpoint.addEventListener('click', () => {
+        if (!currentModel || !checkpointGeometry) return;
+        
+        currentModel.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                
+                mesh.geometry.dispose();
+                
+                mesh.geometry = checkpointGeometry!.clone();
+                
+                const polyCountLabel = document.getElementById('polyCount');
+                if (polyCountLabel) {
+                    polyCountLabel.textContent = `Current Vertices: ${mesh.geometry.attributes.position.count}`;
+                }
+            }
+        });
+        
+        console.log("Model restored from checkpoint");
+    });
+
+    // ---  Overlay ---
+    let isGhostVisible = false;
+    
+    btnToggleCheckpoint.addEventListener('click', () => {
+        if (!checkpointMesh) {
+            updateGhostOverlay();
+        }
+        
+        
+        isGhostVisible = !isGhostVisible;
+        
+        if (checkpointMesh) {
+            checkpointMesh.visible = isGhostVisible;
+        }
+        
+        btnToggleCheckpoint.style.background = isGhostVisible ? '#d9534f' : ''; 
+        btnToggleCheckpoint.innerHTML = isGhostVisible ? 
+            '<i class="fa-solid fa-ghost"></i> Hide Overlay' : 
+            '<i class="fa-solid fa-ghost"></i> Show Overlay';
+    });
+}
+
+//
+function updateGhostOverlay() {
+    if (!checkpointGeometry) return;
+    
+    if (checkpointMesh) {
+        scene.remove(checkpointMesh);
+        if (checkpointMesh.geometry) checkpointMesh.geometry.dispose();
+        checkpointMesh = null;
+    }
+
+    const material = new THREE.MeshBasicMaterial({
+        color: 0xff0000,   
+        wireframe: true,   
+        transparent: true, 
+        opacity: 0.3,      
+        depthTest: true   //  should always be visible on top
+    });
+    
+    // create Mesh
+    checkpointMesh = new THREE.Mesh(checkpointGeometry, material);
+    checkpointMesh.visible = false; 
+    
+    
+    let targetMesh: THREE.Mesh | null = null;
+
+    currentModel!.traverse((child) => {
+        if (!targetMesh && (child as THREE.Mesh).isMesh) {
+            targetMesh = child as THREE.Mesh;
+        }
+    });
+
+    if (targetMesh !== null) {
+        const worldPos = new THREE.Vector3();
+        const worldQuat = new THREE.Quaternion();
+        const worldScale = new THREE.Vector3();
+
+        (targetMesh as THREE.Mesh).getWorldPosition(worldPos);
+        (targetMesh as THREE.Mesh).getWorldQuaternion(worldQuat);
+        (targetMesh as THREE.Mesh).getWorldScale(worldScale);
+
+        checkpointMesh.position.copy(worldPos);
+        checkpointMesh.quaternion.copy(worldQuat);
+        checkpointMesh.scale.copy(worldScale);
+
+        checkpointMesh.scale.multiplyScalar(1.01);
+    }
+    
+    
+    scene.add(checkpointMesh);
+}
 
 // ---------- Resize & Animate ----------
 function resizeToViewer() {
