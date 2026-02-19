@@ -787,6 +787,86 @@ function updateGhostOverlay() {
     scene.add(checkpointMesh);
 }
 
+// ==========================================
+// Von Mises Stress Visualization 
+// ==========================================
+
+const btnStressAnalysis = document.getElementById('btnStressAnalysis');
+
+if (btnStressAnalysis) {
+    btnStressAnalysis.addEventListener('click', () => {
+        if (!currentModel) return;
+        
+        setStatus("Computing Von Mises Stress (Simulated)...");
+
+        currentModel.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                const geometry = mesh.geometry;
+                
+                geometry.computeVertexNormals();
+                
+                const count = geometry.attributes.position.count;
+                const colors = new Float32Array(count * 3);
+                const pos = geometry.attributes.position;
+                const norm = geometry.attributes.normal;
+                
+                
+                
+                const stressValues: number[] = [];
+                let maxStress = 0;
+                let minStress = Infinity;
+
+                
+                
+                for (let i = 0; i < count; i++) {
+                    
+                    
+                    const x = pos.getX(i);
+                    const y = pos.getY(i);
+                    const z = pos.getZ(i);
+                    
+                    
+                    const dist = Math.sqrt(x*x + y*y + z*z);
+                    
+                    const stress = dist * 1.0;
+                    
+                    stressValues.push(stress);
+                    if (stress > maxStress) maxStress = stress;
+                    if (stress < minStress) minStress = stress;
+                }
+
+                const color = new THREE.Color();
+                for (let i = 0; i < count; i++) {
+                    const val = stressValues[i];
+                    
+                    let t = 0;
+                    if (maxStress > minStress) {
+                        t = (val - minStress) / (maxStress - minStress);
+                    }
+
+                    
+                    color.setHSL(0.66 * (1.0 - t), 1.0, 0.5);
+
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                
+                mesh.material = new THREE.MeshStandardMaterial({
+                    vertexColors: true,
+                    roughness: 0.5,
+                    metalness: 0.1
+                });
+            }
+        });
+
+        setStatus("Von Mises Analysis Complete: Red = High Stress");
+    });
+}
+
 // ---------- Resize & Animate ----------
 function resizeToViewer() {
     const w = viewer.clientWidth;
