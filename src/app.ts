@@ -5,6 +5,8 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
+import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
+import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 
 // ---  checkpoint system  ---
 let checkpointGeometry: THREE.BufferGeometry | null = null; 
@@ -867,6 +869,72 @@ if (btnStressAnalysis) {
     });
 }
 
+// ==========================================
+// Export Logic 
+// ==========================================
+
+const btnExportSTL = document.getElementById('btnExportSTL');
+const btnExportOBJ = document.getElementById('btnExportOBJ');
+
+function downloadFile(data: any, filename: string, mimeType: string) {
+    const blob = new Blob([data], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function exportCorrectedModel(exporterType: 'stl' | 'obj') {
+    if (!currentModel) {
+        alert("No model to export!");
+        return;
+    }
+
+    setStatus(`Preparing ${exporterType.toUpperCase()} for export...`);
+
+    const exportScene = new THREE.Scene();
+    
+    const cloneModel = currentModel.clone();
+
+    
+    cloneModel.position.set(0, 0, 0);
+    cloneModel.rotation.set(0, 0, 0);
+    
+
+
+    exportScene.add(cloneModel);
+    
+    exportScene.updateMatrixWorld(true);
+
+    try {
+        if (exporterType === 'stl') {
+            const exporter = new STLExporter();
+            const result = exporter.parse(exportScene, { binary: true });
+            downloadFile(result, 'simplified_model.stl', 'application/octet-stream');
+        } else {
+            const exporter = new OBJExporter();
+            const result = exporter.parse(exportScene);
+            downloadFile(result, 'simplified_model.obj', 'text/plain');
+        }
+        setStatus(`${exporterType.toUpperCase()} Exported Successfully!`);
+    } catch (e) {
+        console.error("Export Error", e);
+        setStatus(`Failed to export ${exporterType.toUpperCase()}`);
+    }
+}
+
+if (btnExportSTL) {
+    btnExportSTL.addEventListener('click', () => exportCorrectedModel('stl'));
+}
+
+if (btnExportOBJ) {
+    btnExportOBJ.addEventListener('click', () => exportCorrectedModel('obj'));
+}
 // ---------- Resize & Animate ----------
 function resizeToViewer() {
     const w = viewer.clientWidth;

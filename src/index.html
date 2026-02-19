@@ -46,6 +46,17 @@
                 </label>
                 <div id="status" class="status-text">No file loaded</div>
             </div>
+        
+        
+            <label class="label-title">Export </label>
+            <div style="display: flex; gap: 5px;">
+                <button id="btnExportSTL" class="btn-tool" style="flex: 1; background-color: #007acc;">
+                    <i class="fa-solid fa-download"></i> .STL
+                </button>
+                <button id="btnExportOBJ" class="btn-tool" style="flex: 1; background-color: #007acc;">
+                    <i class="fa-solid fa-download"></i> .OBJ
+                </button>
+            </div>
         </div>
 
     <div id="panel-edit" class="tool-group">
@@ -65,7 +76,7 @@
                 <span style="font-size: 12px; color: #aaa;">Reduce Type</span>
                 <select id="reduceType" style="width: 100%; background: #333; color: white; border: 1px solid #555; padding: 5px;">
                     <option value="preserve">Shape Preserving </option>
-                    <option value="uniform">Uniform </option>
+                    
                 </select>
             </div>
 
