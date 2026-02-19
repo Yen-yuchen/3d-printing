@@ -85,6 +85,17 @@
                 Login
               </button>
             </div>
+        
+        
+            <label class="label-title">Export </label>
+            <div style="display: flex; gap: 5px;">
+                <button id="btnExportSTL" class="btn-tool" style="flex: 1; background-color: #007acc;">
+                    <i class="fa-solid fa-download"></i> .STL
+                </button>
+                <button id="btnExportOBJ" class="btn-tool" style="flex: 1; background-color: #007acc;">
+                    <i class="fa-solid fa-download"></i> .OBJ
+                </button>
+            </div>
 
             <div id="loggedInPannel" style="display: none; margin-top: 10px;">
               <div class="control-group">
@@ -110,6 +121,12 @@
           <div class="control-group">
             <label class="label-title">Reduce</label>
 
+            <div style="margin-bottom: 10px;">
+                <span style="font-size: 12px; color: #aaa;">Reduce Type</span>
+                <select id="reduceType" style="width: 100%; background: #333; color: white; border: 1px solid #555; padding: 5px;">
+                    <option value="preserve">Shape Preserving </option>
+                    
+                </select>
             <div style="margin-bottom: 10px">
               <span style="font-size: 12px; color: #aaa">Reduce Type</span>
               <select
