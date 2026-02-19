@@ -711,82 +711,9 @@ function performSimplification(targetType: "ratio" | "count", value: number) {
           //targetCount = Math.floor(origCount * globalRatio);
         }
 
-        //const minLimit = 10;
-        //if (targetCount < minLimit) targetCount = minLimit;
         const absoluteMin = 50;
-
-        const percentageMin = Math.floor(origCount * 0.01);
-
-    setStatus("Computing simplification...");
-
-    setTimeout(() => {
-        let currentTotalVerts = 0;
-
-        currentModel!.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
-                
-                if (!mesh.userData.originalGeometry) {
-                    mesh.userData.originalGeometry = mesh.geometry.clone();
-                }
-                const originalGeo = mesh.userData.originalGeometry;
-                const origCount = originalGeo.attributes.position.count;
-
-                let targetCount = 0;
-
-                if (targetType === 'ratio') {
-                    
-                    targetCount = Math.floor(origCount * (1 - value));
-                } else {
-                    const globalOrig = parseInt(originalCountLabel?.textContent || "1");
-                    let removeRatio = value / globalOrig;
-
-                    
-                    if (removeRatio > 1) removeRatio = 1;
-                    if (removeRatio < 0) removeRatio = 0;
-
-                    targetCount = Math.floor(origCount * (1 - removeRatio));
-                    //const globalRatio = value / globalOrig;
-                    //targetCount = Math.floor(origCount * globalRatio);
-                }
-
-               
-                //const minLimit = 10;
-                //if (targetCount < minLimit) targetCount = minLimit;
-                const absoluteMin = 50; 
-
-
-                const percentageMin = Math.floor(origCount * 0.3); 
-
-
-                const minLimit = Math.max(absoluteMin, percentageMin);
-
-
-                if (targetCount < minLimit) {
-                    targetCount = minLimit;
-                }
-
-                if (targetCount >= origCount * 0.99) {
-                    mesh.geometry.dispose();
-                    mesh.geometry = originalGeo.clone();
-                    currentTotalVerts += origCount;
-                    return;
-                }
-
-                try {
-                    const simplified = modifier.modify(originalGeo.clone(), targetCount);
-                    
-                    mesh.geometry.dispose();
-                    mesh.geometry = simplified;
-                    currentTotalVerts += simplified.attributes.position.count;
-                } catch (e) {
-                    console.error("Simplify failed", e);
-                    mesh.geometry.dispose();
-                    mesh.geometry = originalGeo.clone();
-                    currentTotalVerts += origCount;
-                }
-            }
-        });
+        const percentageMin = Math.floor(origCount * 0.3);
+        const minLimit = Math.max(absoluteMin, percentageMin);
 
         if (targetCount < minLimit) {
           targetCount = minLimit;
