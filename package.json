@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "concurrently -n client,server -c auto \"vite\" \"npm --prefix server run dev\"",
+    "build": "npm --prefix server run build && tsc && vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
     "@types/three": "^0.182.0",
+    "concurrently": "^9.2.1",
     "three": "^0.182.0",
     "typescript": "~5.9.3",
     "vite": "^7.2.4"
