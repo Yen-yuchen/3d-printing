@@ -3,7 +3,18 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
-import { SimplifyModifier } from "three/examples/jsm/modifiers/SimplifyModifier.js";
+import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
+import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
+
+// ---  checkpoint system  ---
+let checkpointGeometry: THREE.BufferGeometry | null = null; 
+let checkpointMesh: THREE.Mesh | null = null; 
+
+// ---  catch UI  ---
+const btnSaveCheckpoint = document.getElementById('btnSaveCheckpoint') as HTMLButtonElement;
+const btnRestoreCheckpoint = document.getElementById('btnRestoreCheckpoint') as HTMLButtonElement;
+const btnToggleCheckpoint = document.getElementById('btnToggleCheckpoint') as HTMLButtonElement;
+const checkpointStatus = document.getElementById('checkpointStatus');
 
 // ---------- UI Elements for Meshmixer Tools ----------
 const reduceTargetSelect = document.getElementById(
@@ -267,62 +278,71 @@ function collectExternalUris(gltfJson: any): Set<string> {
 // Meshmixer Style Logic: Update Budget UI
 // ==========================================
 function updateBudgetInputFromCurrent() {
-  if (!currentModel) return;
-  let totalVerts = 0;
-  let totalOrig = 0;
-
-  currentModel.traverse((child) => {
-    if ((child as THREE.Mesh).isMesh) {
-      const mesh = child as THREE.Mesh;
-      totalVerts += mesh.geometry.attributes.position.count;
-      if (mesh.userData.originalGeometry) {
-        totalOrig += mesh.userData.originalGeometry.attributes.position.count;
-      } else {
-        // 如果還沒備份，當作當前就是原始
-        totalOrig += mesh.geometry.attributes.position.count;
-      }
-    }
-  });
-
-  if (budgetInput) budgetInput.value = totalVerts.toString();
-  if (originalCountLabel) originalCountLabel.textContent = totalOrig.toString();
-  if (polyCountLabel)
-    polyCountLabel.textContent = `Current Vertices: ${totalVerts}`;
+    if (!currentModel) return;
+    let totalVerts = 0;
+    let totalOrig = 0;
+    
+    currentModel.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            totalVerts += mesh.geometry.attributes.position.count;
+            if (mesh.userData.originalGeometry) {
+                totalOrig += mesh.userData.originalGeometry.attributes.position.count;
+            } else {
+                
+                totalOrig += mesh.geometry.attributes.position.count;
+            }
+        }
+    });
+    
+    if (budgetInput) budgetInput.value = totalVerts.toString();
+    if (originalCountLabel) originalCountLabel.textContent = totalOrig.toString();
+    if (polyCountLabel) polyCountLabel.textContent = `Current Vertices: ${totalVerts}`;
 }
 
 // ==========================================
 // Loader Logic
 // ==========================================
 async function loadSelection(files: FileList) {
-  const selected = Array.from(files);
-  if (selected.length === 0) return;
+    const selected = Array.from(files);
+    if (selected.length === 0) return;
 
-  const gltfFiles = selected.filter((f) =>
-    f.name.toLowerCase().endsWith(".gltf"),
-  );
-  const glbFiles = selected.filter((f) =>
-    f.name.toLowerCase().endsWith(".glb"),
-  );
-  const stlFiles = selected.filter((f) =>
-    f.name.toLowerCase().endsWith(".stl"),
-  );
-  const objFiles = selected.filter((f) =>
-    f.name.toLowerCase().endsWith(".obj"),
-  );
+    const gltfFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".gltf"));
+    const glbFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".glb"));
+    const stlFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".stl"));
+    const objFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".obj"));
 
-  // Helper: Shared logic after any model is loaded
-  const onLoaded = (object: THREE.Object3D, fileName: string) => {
-    clearCurrentModel();
+    // Helper: Shared logic after any model is loaded
+    const onLoaded = (object: THREE.Object3D, fileName: string) => {
+        clearCurrentModel();
+        
+        // 1. Backup Geometry for Simplification
+        object.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                if (!mesh.userData.originalGeometry) {
+                    mesh.userData.originalGeometry = mesh.geometry.clone();
+                }
+            }
+        });
 
-    // 1. Backup Geometry for Simplification
-    object.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        if (!mesh.userData.originalGeometry) {
-          mesh.userData.originalGeometry = mesh.geometry.clone();
-        }
-      }
-    });
+        currentModel = object;
+        object.traverse((child: any) =>{
+                if(child?.geometry?.isBufferGeometry){
+                    console.log("Before merge: ", child.geometry.attributes.position.count)
+                    child.geometry = BufferGeometryUtils.mergeVertices(child.geometry, 0.001);
+                    console.log("After merge: ", child.geometry.attributes.position.count);
+                }
+            })
+
+        scene.add(object);
+        cube.visible = false;
+
+        applyModelVisibility();
+        applyHelperVisibility();
+        applyScaleFromSlider();
+        applyWireframe();
+        fitCameraToObject(object);
 
     currentModel = object;
     scene.add(object);
@@ -496,6 +516,125 @@ if (bgColorPicker) {
   });
 }
 
+//testing heatmap
+viewer.addEventListener("click", () => {
+    const colors = [];
+    //const yValues = [];
+    //console.log(currentModel);
+    let position, index;
+    let mesh = getMesh(currentModel);
+    console.log(currentModel);
+    //console.log("Z")
+    if(mesh){
+        //console.log("A")
+        if(mesh.geometry.isBufferGeometry && !mesh.geometry.hasAttribute("color")){
+            //console.log("B")
+            position = mesh.geometry?.attributes.position;
+            index = mesh.geometry?.index;
+            
+        }
+        if(position && index){
+            const density: number[] = new Array(index.count).fill(0);
+
+            //console.log("C")
+            
+            // let maxY = -Infinity;
+            // let minY = Infinity;
+            let maxFaceCount = -Infinity;
+            let minFaceCount = Infinity;
+            let faceCount: number = 0;
+            let vertex: THREE.Vector3 = new THREE.Vector3();
+            for(let j = 0; j < index.count; j+=3){
+                density[index.getX(j)]++;
+                density[index.getY(j)]++;
+                density[index.getZ(j)]++;
+            }
+            for(let i = 0; i < density.length; i++){
+                //console.log("density[i]: ", density[i]);
+                faceCount = density[i]
+
+                if(faceCount > maxFaceCount){
+                    maxFaceCount = faceCount;
+                } else if (faceCount < minFaceCount){
+                    minFaceCount = faceCount;
+                }
+
+                // vertex.x = position.getX(i);
+                // vertex.y = position.getY(i);
+                // vertex.z = position.getZ(i);
+                // vertex = mesh.localToWorld(vertex);
+                // const y = vertex.y;
+                // yValues.push(y);
+                // if(maxY < y){
+                //     maxY = y
+                // }
+                // if(minY > y){
+                //     minY = y
+                // }
+            }   
+            //console.log("maxY: ", maxY);
+            //console.log("minY: ", minY);
+            let maxHeat = -Infinity;
+            let minHeat = Infinity;
+            console.log("MAX FACE: ", maxFaceCount);
+            console.log("MIN FACE: ", minFaceCount);
+            for (let i = 0; i < density.length; i++) {
+                
+                // Heat value based on Y position
+                const heatValue = (density[i] - minFaceCount) / (maxFaceCount - minFaceCount);
+
+                if(heatValue > maxHeat){
+                    maxHeat = heatValue;
+                } else if (heatValue < minHeat){
+                    minHeat = heatValue;
+                }
+
+                
+                /*
+                Explanation: 
+                    Default range of y values is [minY, maxY]
+                    First minY is subtracted so the range becomes [0, maxY - minY]
+                    Then the y value is divided by maxY - minY so the range of possible y values is [0,1]
+                */
+                const color = new THREE.Color();
+                color.setHSL((1 - heatValue) * 0.66, 1.0, 0.5); // blue→red gradient
+                colors.push(color.r, color.g, color.b);
+            }
+            //console.log("maxHeat: ", maxHeat);
+            //console.log("minHeat: ", minHeat);
+            mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            const material = mesh.material as THREE.Material;
+            material.vertexColors = true;
+            material.needsUpdate = true;
+        }
+    }
+})
+
+function getMesh(object: THREE.Object3D | null): THREE.Mesh | null{
+    if(object?.type == "Mesh"){
+        return object as THREE.Mesh;
+    }
+    if (!(object instanceof THREE.Object3D)) {
+        console.error("Provided object is not a THREE.Object3D or Group.");
+        return null;
+    }
+
+    // Search through children
+    for (let child of object.children) {
+        if (child.type == "Mesh") {
+            return child as THREE.Mesh; // Found the first mesh
+        }
+        // If the child is another group or Object3D, search inside it
+        if (child.children && child.children.length > 0) {
+            const mesh = getMesh(child);
+            if (mesh) return mesh;
+        }
+    }
+
+    // No mesh found
+    return null;
+}
+
 // 2. Model Color
 if (modelColorPicker) {
   modelColorPicker.addEventListener("input", (e) => {
@@ -578,7 +717,76 @@ function performSimplification(targetType: "ratio" | "count", value: number) {
 
         const percentageMin = Math.floor(origCount * 0.01);
 
-        const minLimit = Math.max(absoluteMin, percentageMin);
+    setStatus("Computing simplification...");
+
+    setTimeout(() => {
+        let currentTotalVerts = 0;
+
+        currentModel!.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                
+                if (!mesh.userData.originalGeometry) {
+                    mesh.userData.originalGeometry = mesh.geometry.clone();
+                }
+                const originalGeo = mesh.userData.originalGeometry;
+                const origCount = originalGeo.attributes.position.count;
+
+                let targetCount = 0;
+
+                if (targetType === 'ratio') {
+                    
+                    targetCount = Math.floor(origCount * (1 - value));
+                } else {
+                    const globalOrig = parseInt(originalCountLabel?.textContent || "1");
+                    let removeRatio = value / globalOrig;
+
+                    
+                    if (removeRatio > 1) removeRatio = 1;
+                    if (removeRatio < 0) removeRatio = 0;
+
+                    targetCount = Math.floor(origCount * (1 - removeRatio));
+                    //const globalRatio = value / globalOrig;
+                    //targetCount = Math.floor(origCount * globalRatio);
+                }
+
+               
+                //const minLimit = 10;
+                //if (targetCount < minLimit) targetCount = minLimit;
+                const absoluteMin = 50; 
+
+
+                const percentageMin = Math.floor(origCount * 0.3); 
+
+
+                const minLimit = Math.max(absoluteMin, percentageMin);
+
+
+                if (targetCount < minLimit) {
+                    targetCount = minLimit;
+                }
+
+                if (targetCount >= origCount * 0.99) {
+                    mesh.geometry.dispose();
+                    mesh.geometry = originalGeo.clone();
+                    currentTotalVerts += origCount;
+                    return;
+                }
+
+                try {
+                    const simplified = modifier.modify(originalGeo.clone(), targetCount);
+                    
+                    mesh.geometry.dispose();
+                    mesh.geometry = simplified;
+                    currentTotalVerts += simplified.attributes.position.count;
+                } catch (e) {
+                    console.error("Simplify failed", e);
+                    mesh.geometry.dispose();
+                    mesh.geometry = originalGeo.clone();
+                    currentTotalVerts += origCount;
+                }
+            }
+        });
 
         if (targetCount < minLimit) {
           targetCount = minLimit;
@@ -643,6 +851,219 @@ if (btnApplyBudget && budgetInput) {
     }
     performSimplification("count", budget);
   });
+}
+// ==========================================
+// Checkpoint System 
+// ==========================================
+
+
+// make sure all buttons exist before adding event listeners
+if (btnSaveCheckpoint && btnRestoreCheckpoint && btnToggleCheckpoint) {
+    
+    // --- (Save) ---
+    btnSaveCheckpoint.addEventListener('click', () => {
+        if (!currentModel) return;
+        
+        let found = false;
+        currentModel.traverse((child) => {
+            
+            if (!found && (child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                
+                checkpointGeometry = mesh.geometry.clone();
+                found = true;
+            }
+        });
+
+        if (found) {
+            btnRestoreCheckpoint.disabled = false;
+            btnToggleCheckpoint.disabled = false;
+            
+            if (checkpointStatus) {
+                const time = new Date().toLocaleTimeString();
+                checkpointStatus.textContent = `Saved at ${time}`;
+                checkpointStatus.style.color = '#4caf50'; 
+            }
+            
+            updateGhostOverlay();
+            
+            console.log("Checkpoint saved!");
+        }
+    });
+
+    // --- Restore ---
+    btnRestoreCheckpoint.addEventListener('click', () => {
+        if (!currentModel || !checkpointGeometry) return;
+        
+        currentModel.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                
+                mesh.geometry.dispose();
+                
+                mesh.geometry = checkpointGeometry!.clone();
+                
+                const polyCountLabel = document.getElementById('polyCount');
+                if (polyCountLabel) {
+                    polyCountLabel.textContent = `Current Vertices: ${mesh.geometry.attributes.position.count}`;
+                }
+            }
+        });
+        
+        console.log("Model restored from checkpoint");
+    });
+
+    // ---  Overlay ---
+    let isGhostVisible = false;
+    
+    btnToggleCheckpoint.addEventListener('click', () => {
+        if (!checkpointMesh) {
+            updateGhostOverlay();
+        }
+        
+        
+        isGhostVisible = !isGhostVisible;
+        
+        if (checkpointMesh) {
+            checkpointMesh.visible = isGhostVisible;
+        }
+        
+        btnToggleCheckpoint.style.background = isGhostVisible ? '#d9534f' : ''; 
+        btnToggleCheckpoint.innerHTML = isGhostVisible ? 
+            '<i class="fa-solid fa-ghost"></i> Hide Overlay' : 
+            '<i class="fa-solid fa-ghost"></i> Show Overlay';
+    });
+}
+
+//
+function updateGhostOverlay() {
+    if (!checkpointGeometry) return;
+    
+    if (checkpointMesh) {
+        scene.remove(checkpointMesh);
+        if (checkpointMesh.geometry) checkpointMesh.geometry.dispose();
+        checkpointMesh = null;
+    }
+
+    const material = new THREE.MeshBasicMaterial({
+        color: 0xff0000,   
+        wireframe: true,   
+        transparent: true, 
+        opacity: 0.3,      
+        depthTest: true   //  should always be visible on top
+    });
+    
+    // create Mesh
+    checkpointMesh = new THREE.Mesh(checkpointGeometry, material);
+    checkpointMesh.visible = false; 
+    
+    
+    let targetMesh: THREE.Mesh | null = null;
+
+    currentModel!.traverse((child) => {
+        if (!targetMesh && (child as THREE.Mesh).isMesh) {
+            targetMesh = child as THREE.Mesh;
+        }
+    });
+
+    if (targetMesh !== null) {
+        const worldPos = new THREE.Vector3();
+        const worldQuat = new THREE.Quaternion();
+        const worldScale = new THREE.Vector3();
+
+        (targetMesh as THREE.Mesh).getWorldPosition(worldPos);
+        (targetMesh as THREE.Mesh).getWorldQuaternion(worldQuat);
+        (targetMesh as THREE.Mesh).getWorldScale(worldScale);
+
+        checkpointMesh.position.copy(worldPos);
+        checkpointMesh.quaternion.copy(worldQuat);
+        checkpointMesh.scale.copy(worldScale);
+
+        checkpointMesh.scale.multiplyScalar(1.01);
+    }
+    
+    
+    scene.add(checkpointMesh);
+}
+
+// ==========================================
+// Von Mises Stress Visualization 
+// ==========================================
+
+const btnStressAnalysis = document.getElementById('btnStressAnalysis');
+
+if (btnStressAnalysis) {
+    btnStressAnalysis.addEventListener('click', () => {
+        if (!currentModel) return;
+        
+        setStatus("Computing Von Mises Stress (Simulated)...");
+
+        currentModel.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                const geometry = mesh.geometry;
+                
+                geometry.computeVertexNormals();
+                
+                const count = geometry.attributes.position.count;
+                const colors = new Float32Array(count * 3);
+                const pos = geometry.attributes.position;
+                const norm = geometry.attributes.normal;
+                
+                
+                
+                const stressValues: number[] = [];
+                let maxStress = 0;
+                let minStress = Infinity;
+
+                
+                
+                for (let i = 0; i < count; i++) {
+                    
+                    
+                    const x = pos.getX(i);
+                    const y = pos.getY(i);
+                    const z = pos.getZ(i);
+                    
+                    
+                    const dist = Math.sqrt(x*x + y*y + z*z);
+                    
+                    const stress = dist * 1.0;
+                    
+                    stressValues.push(stress);
+                    if (stress > maxStress) maxStress = stress;
+                    if (stress < minStress) minStress = stress;
+                }
+
+                const color = new THREE.Color();
+                for (let i = 0; i < count; i++) {
+                    const val = stressValues[i];
+                    
+                    let t = 0;
+                    if (maxStress > minStress) {
+                        t = (val - minStress) / (maxStress - minStress);
+                    }
+
+                    
+                    color.setHSL(0.66 * (1.0 - t), 1.0, 0.5);
+
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                
+                mesh.material = new THREE.MeshStandardMaterial({
+                    vertexColors: true,
+                    roughness: 0.5,
+                    metalness: 0.1
+                });
+            }
+        });
+
+        setStatus("Von Mises Analysis Complete: Red = High Stress");
+    });
 }
 
 // ---------- Resize & Animate ----------
