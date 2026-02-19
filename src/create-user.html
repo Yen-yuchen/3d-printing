@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create User</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      body {
+        margin: 0;
+        background: #111;
+        color: #fff;
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Arial;
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 40px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+      }
+      p {
+        margin: 0 0 16px;
+        color: #bbb;
+      }
+      label {
+        display: block;
+        margin: 10px 0 6px;
+        color: #ddd;
+        font-size: 13px;
+      }
+      input {
+        width: 100%;
+        background: #222;
+        border: 1px solid #555;
+        color: #fff;
+        padding: 10px;
+        border-radius: 8px;
+        box-sizing: border-box;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        align-items: center;
+      }
+      button {
+        background: #333;
+        border: 1px solid #555;
+        color: #fff;
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #ff9800;
+        border-color: #ff9800;
+        color: #111;
+        font-weight: 600;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .status {
+        font-size: 13px;
+        color: #bbb;
+      }
+      .status.ok {
+        color: #77ffb0;
+      }
+      .status.err {
+        color: #ff7f7f;
+      }
+      a {
+        color: #ff9800;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Create user</h1>
+        <p>
+          Creates a row in your <code>users</code> table by calling
+          <code>POST /api/users</code>.
+        </p>
+
+        <form id="createUserForm">
+          <!-- Optional fields you can wire up later if your DB schema supports it -->
+          <div class="row">
+            <div>
+              <label for="Name">Name</label>
+              <input
+                id="name"
+                name="username"
+                type="text"
+                autocomplete="Name"
+                placeholder="janedoe"
+              />
+            </div>
+            <div>
+              <label for="Email">Email</label>
+              <input
+                id="email"
+                name="Email"
+                type="email"
+                placeholder="email@Email.com"
+              />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="submitBtn" type="submit">
+              Create user
+            </button>
+            <span id="status" class="status"></span>
+          </div>
+        </form>
+
+        <div style="margin-top: 12px; color: #aaa; font-size: 12px">
+          Tip: if you run your API on a different port than the frontend, set a
+          Vite proxy for <code>/api</code> or change the fetch URL to
+          <code>http://localhost:3001/api/users</code>.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("createUserForm");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const name = document.getElementById("name").value.trim();
+        const email = document.getElementById("email").value.trim();
+
+        try {
+          const res = await fetch("/api/users", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name, email }),
+          });
+
+          if (!res.ok) {
+            const text = await res.text();
+            alert("Failed: " + text);
+            return;
+          }
+
+          const user = await res.json();
+          alert("User created: " + user.email);
+        } catch (err) {
+          console.error(err);
+          alert("Request failed");
+        }
+      });
+    </script>
+  </body>
+</html>
