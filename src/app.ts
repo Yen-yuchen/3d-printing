@@ -470,7 +470,7 @@ async function loadSelection(files: FileList) {
           metalness: 0.1,
         });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.rotation.x = -Math.PI / 2;
+        //mesh.rotation.x = -Math.PI / 2;
         onLoaded(mesh, mainSingle.name);
         URL.revokeObjectURL(url);
       },
@@ -1025,17 +1025,20 @@ function exportCorrectedModel(exporterType: 'stl' | 'obj') {
 
     const exportScene = new THREE.Scene();
     
-    const cloneModel = currentModel.clone();
+    currentModel.updateMatrixWorld(true);
 
-    
-    cloneModel.position.set(0, 0, 0);
-    cloneModel.rotation.set(0, 0, 0);
-    
-
-
-    exportScene.add(cloneModel);
-    
-    exportScene.updateMatrixWorld(true);
+    currentModel.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            
+            const cloneGeo = mesh.geometry.clone();
+            const cloneMesh = new THREE.Mesh(cloneGeo, mesh.material);
+            
+            cloneGeo.applyMatrix4(mesh.matrixWorld);
+            
+            exportScene.add(cloneMesh);
+        }
+    });
 
     try {
         if (exporterType === 'stl') {
