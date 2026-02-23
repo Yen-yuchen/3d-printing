@@ -459,7 +459,7 @@ async function loadSelection(files: FileList) {
     stlLoader.load(
       url,
       (geo) => {
-        geo.center();
+        //geo.center();
         // Default color or picked color
         const initialColor = modelColorPicker
           ? modelColorPicker.value
@@ -933,6 +933,9 @@ if (btnStressAnalysis) {
                 const geometry = mesh.geometry;
                 
                 geometry.computeVertexNormals();
+                geometry.computeBoundingBox();
+                const centerPoint = new THREE.Vector3();
+                geometry.boundingBox!.getCenter(centerPoint);
                 
                 const count = geometry.attributes.position.count;
                 const colors = new Float32Array(count * 3);
@@ -955,9 +958,11 @@ if (btnStressAnalysis) {
                     const z = pos.getZ(i);
                     
                     
-                    const dist = Math.sqrt(x*x + y*y + z*z);
-                    
-                    const stress = dist * 1.0;
+                    const dx = x - centerPoint.x;
+                        const dy = y - centerPoint.y;
+                        const dz = z - centerPoint.z;
+                        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);                    
+                        const stress = dist * 1.0;
                     
                     stressValues.push(stress);
                     if (stress > maxStress) maxStress = stress;
