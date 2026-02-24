@@ -315,27 +315,28 @@ async function loadSelection(files: FileList) {
     const objFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".obj"));
 
     // Helper: Shared logic after any model is loaded
+    // Helper: Shared logic after any model is loaded
     const onLoaded = (object: THREE.Object3D, fileName: string) => {
         clearCurrentModel();
         
-        // 1. Backup Geometry for Simplification
+        currentModel = object;
+        
         object.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
+                
+                if (mesh.geometry.isBufferGeometry) {
+                    console.log("Before merge: ", mesh.geometry.attributes.position.count);
+                    mesh.geometry = BufferGeometryUtils.mergeVertices(mesh.geometry, 0.001);
+                    mesh.geometry.computeVertexNormals(); 
+                    console.log("After merge: ", mesh.geometry.attributes.position.count);
+                }
+
                 if (!mesh.userData.originalGeometry) {
                     mesh.userData.originalGeometry = mesh.geometry.clone();
                 }
             }
         });
-
-        currentModel = object;
-        object.traverse((child: any) =>{
-                if(child?.geometry?.isBufferGeometry){
-                    console.log("Before merge: ", child.geometry.attributes.position.count)
-                    child.geometry = BufferGeometryUtils.mergeVertices(child.geometry, 0.001);
-                    console.log("After merge: ", child.geometry.attributes.position.count);
-                }
-            })
 
         scene.add(object);
         cube.visible = false;
@@ -346,30 +347,20 @@ async function loadSelection(files: FileList) {
         applyWireframe();
         fitCameraToObject(object);
 
-    currentModel = object;
-    scene.add(object);
-    cube.visible = false;
+        setStatus(`Loaded: ${fileName}`);
 
-    applyModelVisibility();
-    applyHelperVisibility();
-    applyScaleFromSlider();
-    applyWireframe();
-    fitCameraToObject(object);
+        // Reset Meshmixer UI
+        if (meshSlider) meshSlider.value = "100";
+        if (meshValue) {
+          meshValue.textContent = "100%";
+          meshValue.style.color = "#ff9800";
+        }
+        updateBudgetInputFromCurrent();
 
-    setStatus(`Loaded: ${fileName}`);
-
-    // Reset Meshmixer UI
-    if (meshSlider) meshSlider.value = "100";
-    if (meshValue) {
-      meshValue.textContent = "100%";
-      meshValue.style.color = "#ff9800";
-    }
-    updateBudgetInputFromCurrent();
-
-    // record last loaded file name (used when saving)
-    lastLoadedFileName = fileName;
-    updateSaveButtonState();
-  };
+        // record last loaded file name (used when saving)
+        lastLoadedFileName = fileName;
+        updateSaveButtonState();
+    };
 
   // ---- glTF JSON package ----
   if (gltfFiles.length > 0) {
@@ -466,8 +457,8 @@ async function loadSelection(files: FileList) {
           : "#9a9a9a";
         const mat = new THREE.MeshStandardMaterial({
           color: initialColor,
-          roughness: 0.5,
-          metalness: 0.1,
+          roughness: 0.8,
+          metalness: 0.0,
         });
         const mesh = new THREE.Mesh(geo, mat);
         //mesh.rotation.x = -Math.PI / 2;
@@ -518,99 +509,56 @@ if (bgColorPicker) {
   });
 }
 
-//testing heatmap
 viewer.addEventListener("click", () => {
-    const colors = [];
-    //const yValues = [];
-    //console.log(currentModel);
-    let position, index;
     let mesh = getMesh(currentModel);
-    console.log(currentModel);
-    //console.log("Z")
-    if(mesh){
-        //console.log("A")
-        if(mesh.geometry.isBufferGeometry && !mesh.geometry.hasAttribute("color")){
-            //console.log("B")
-            position = mesh.geometry?.attributes.position;
-            index = mesh.geometry?.index;
+    if (mesh) {
+        if (mesh.geometry.isBufferGeometry) {
+            const position = mesh.geometry.attributes.position;
+            const index = mesh.geometry.index;
             
-        }
-        if(position && index){
-            const density: number[] = new Array(index.count).fill(0);
+            if (position && index) {
+                const vertexCount = position.count;
+                const density: number[] = new Array(vertexCount).fill(0);
 
-            //console.log("C")
-            
-            // let maxY = -Infinity;
-            // let minY = Infinity;
-            let maxFaceCount = -Infinity;
-            let minFaceCount = Infinity;
-            let faceCount: number = 0;
-            let vertex: THREE.Vector3 = new THREE.Vector3();
-            for(let j = 0; j < index.count; j+=3){
-                density[index.getX(j)]++;
-                density[index.getY(j)]++;
-                density[index.getZ(j)]++;
-            }
-            for(let i = 0; i < density.length; i++){
-                //console.log("density[i]: ", density[i]);
-                faceCount = density[i]
-
-                if(faceCount > maxFaceCount){
-                    maxFaceCount = faceCount;
-                } else if (faceCount < minFaceCount){
-                    minFaceCount = faceCount;
+                for (let j = 0; j < index.count; j++) {
+                    const vertexIndex = index.getX(j); 
+                    density[vertexIndex]++;
                 }
 
-                // vertex.x = position.getX(i);
-                // vertex.y = position.getY(i);
-                // vertex.z = position.getZ(i);
-                // vertex = mesh.localToWorld(vertex);
-                // const y = vertex.y;
-                // yValues.push(y);
-                // if(maxY < y){
-                //     maxY = y
-                // }
-                // if(minY > y){
-                //     minY = y
-                // }
-            }   
-            //console.log("maxY: ", maxY);
-            //console.log("minY: ", minY);
-            let maxHeat = -Infinity;
-            let minHeat = Infinity;
-            console.log("MAX FACE: ", maxFaceCount);
-            console.log("MIN FACE: ", minFaceCount);
-            for (let i = 0; i < density.length; i++) {
-                
-                // Heat value based on Y position
-                const heatValue = (density[i] - minFaceCount) / (maxFaceCount - minFaceCount);
-
-                if(heatValue > maxHeat){
-                    maxHeat = heatValue;
-                } else if (heatValue < minHeat){
-                    minHeat = heatValue;
+                let maxFaceCount = -Infinity;
+                let minFaceCount = Infinity;
+                for (let i = 0; i < vertexCount; i++) {
+                    const count = density[i];
+                    if (count > maxFaceCount) maxFaceCount = count;
+                    if (count < minFaceCount) minFaceCount = count;
                 }
 
-                
-                /*
-                Explanation: 
-                    Default range of y values is [minY, maxY]
-                    First minY is subtracted so the range becomes [0, maxY - minY]
-                    Then the y value is divided by maxY - minY so the range of possible y values is [0,1]
-                */
+                console.log("MAX FACE (Density): ", maxFaceCount);
+                console.log("MIN FACE (Density): ", minFaceCount);
+
+                const colors = [];
                 const color = new THREE.Color();
-                color.setHSL((1 - heatValue) * 0.66, 1.0, 0.5); // blue→red gradient
-                colors.push(color.r, color.g, color.b);
+                
+                for (let i = 0; i < vertexCount; i++) {
+                    let heatValue = 0;
+                    if (maxFaceCount > minFaceCount) {
+                        heatValue = (density[i] - minFaceCount) / (maxFaceCount - minFaceCount);
+                    }
+
+                    color.setHSL((1 - heatValue) * 0.66, 1.0, 0.5); 
+                    colors.push(color.r, color.g, color.b);
+                }
+
+                mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                const material = mesh.material as THREE.MeshStandardMaterial;
+                material.vertexColors = true;
+                material.needsUpdate = true;
+            } else {
+                console.warn("");
             }
-            //console.log("maxHeat: ", maxHeat);
-            //console.log("minHeat: ", minHeat);
-            mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-            const material = mesh.material as THREE.Material;
-            material.vertexColors = true;
-            material.needsUpdate = true;
         }
     }
-})
+});
 
 function getMesh(object: THREE.Object3D | null): THREE.Mesh | null{
     if(object?.type == "Mesh"){
