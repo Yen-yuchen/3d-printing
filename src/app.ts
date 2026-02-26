@@ -5,7 +5,8 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
-import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
+// 把 STLExporter 換成 GLTFExporter
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 
 // ---  checkpoint system  ---
@@ -472,6 +473,18 @@ async function loadSelection(files: FileList) {
     objLoader.load(
       url,
       (obj) => {
+        const initialColor = modelColorPicker ? modelColorPicker.value : "#9a9a9a";
+        const mat = new THREE.MeshStandardMaterial({
+          color: initialColor,
+          roughness: 0.8, 
+          metalness: 0.0,
+        });
+        
+        obj.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                (child as THREE.Mesh).material = mat;
+            }
+        });
         onLoaded(obj, mainSingle.name);
         URL.revokeObjectURL(url);
       },
@@ -777,17 +790,39 @@ if (btnSaveCheckpoint && btnRestoreCheckpoint && btnToggleCheckpoint) {
                 const mesh = child as THREE.Mesh;
                 
                 mesh.geometry.dispose();
-                
                 mesh.geometry = checkpointGeometry!.clone();
+                
+                const currentVerts = mesh.geometry.attributes.position.count;
                 
                 const polyCountLabel = document.getElementById('polyCount');
                 if (polyCountLabel) {
-                    polyCountLabel.textContent = `Current Vertices: ${mesh.geometry.attributes.position.count}`;
+                    polyCountLabel.textContent = `Current Vertices: ${currentVerts}`;
+                }
+
+                if (mesh.userData.originalGeometry) {
+                    const origVerts = mesh.userData.originalGeometry.attributes.position.count;
+                    
+                    let restoredPercentage = Math.round((currentVerts / origVerts) * 100);
+                    
+                    if (restoredPercentage > 100) restoredPercentage = 100;
+                    if (restoredPercentage < 0) restoredPercentage = 0;
+
+                    if (meshSlider) {
+                        meshSlider.value = restoredPercentage.toString();
+                    }
+                    if (meshValue) {
+                        meshValue.textContent = `${restoredPercentage}%`;
+                        meshValue.style.color = "#ff9800";
+                    }
+
+                    if (budgetInput) {
+                        budgetInput.value = currentVerts.toString();
+                    }
                 }
             }
         });
         
-        console.log("Model restored from checkpoint");
+        console.log("Model restored from checkpoint and UI synced.");
     });
 
     // ---  Overlay ---
@@ -952,7 +987,7 @@ if (btnStressAnalysis) {
 // Export Logic 
 // ==========================================
 
-const btnExportSTL = document.getElementById('btnExportSTL');
+const btnExportGLB = document.getElementById('btnExportGLB');
 const btnExportOBJ = document.getElementById('btnExportOBJ');
 
 function downloadFile(data: any, filename: string, mimeType: string) {
@@ -968,7 +1003,9 @@ function downloadFile(data: any, filename: string, mimeType: string) {
     URL.revokeObjectURL(url);
 }
 
-function exportCorrectedModel(exporterType: 'stl' | 'obj') {
+
+
+function exportCorrectedModel(exporterType: 'glb' | 'obj') {
     if (!currentModel) {
         alert("No model to export!");
         return;
@@ -977,7 +1014,6 @@ function exportCorrectedModel(exporterType: 'stl' | 'obj') {
     setStatus(`Preparing ${exporterType.toUpperCase()} for export...`);
 
     const exportScene = new THREE.Scene();
-    
     currentModel.updateMatrixWorld(true);
 
     currentModel.traverse((child) => {
@@ -985,33 +1021,59 @@ function exportCorrectedModel(exporterType: 'stl' | 'obj') {
             const mesh = child as THREE.Mesh;
             
             const cloneGeo = mesh.geometry.clone();
-            const cloneMesh = new THREE.Mesh(cloneGeo, mesh.material);
             
+            let cloneMat;
+            if (Array.isArray(mesh.material)) {
+                cloneMat = mesh.material.map(m => {
+                    const newMat = m.clone();
+                    if ('wireframe' in newMat) {
+                        (newMat as any).wireframe = false;
+                    }
+                    return newMat;
+                });
+            } else {
+                cloneMat = mesh.material.clone();
+                if ('wireframe' in cloneMat) {
+                    (cloneMat as any).wireframe = false;
+                }
+            }
+
+            const cloneMesh = new THREE.Mesh(cloneGeo, cloneMat);
             cloneGeo.applyMatrix4(mesh.matrixWorld);
-            
             exportScene.add(cloneMesh);
         }
     });
 
     try {
-        if (exporterType === 'stl') {
-            const exporter = new STLExporter();
-            const result = exporter.parse(exportScene, { binary: true });
-            downloadFile(result, 'simplified_model.stl', 'application/octet-stream');
+        if (exporterType === 'glb') {
+            const exporter = new GLTFExporter();
+            exporter.parse(
+                exportScene,
+                (result) => {
+                    downloadFile(result, 'simplified_model.glb', 'application/octet-stream');
+                    setStatus("GLB Exported Successfully!");
+                },
+                (error) => {
+                    console.error("GLB Export Error:", error);
+                    setStatus("Failed to export GLB");
+                },
+                { binary: true } 
+            );
         } else {
             const exporter = new OBJExporter();
             const result = exporter.parse(exportScene);
             downloadFile(result, 'simplified_model.obj', 'text/plain');
+            setStatus("OBJ Exported Successfully!");
         }
-        setStatus(`${exporterType.toUpperCase()} Exported Successfully!`);
     } catch (e) {
         console.error("Export Error", e);
         setStatus(`Failed to export ${exporterType.toUpperCase()}`);
     }
 }
 
-if (btnExportSTL) {
-    btnExportSTL.addEventListener('click', () => exportCorrectedModel('stl'));
+
+if (btnExportGLB) {
+    btnExportGLB.addEventListener('click', () => exportCorrectedModel('glb'));
 }
 
 if (btnExportOBJ) {
