@@ -532,33 +532,66 @@ viewer.addEventListener("click", () => {
             if (position && index) {
                 const vertexCount = position.count;
                 const density: number[] = new Array(vertexCount).fill(0);
+                const numFaces: number[] = new Array(vertexCount).fill(0);
 
-                for (let j = 0; j < index.count; j++) {
-                    const vertexIndex = index.getX(j); 
-                    density[vertexIndex]++;
+               
+
+                for (let j = 0; j < index.count; j += 3) {
+                    const aIndex = index.getX(j);
+                    const bIndex = index.getY(j);
+                    const cIndex = index.getZ(j);
+
+                    const a = new THREE.Vector3(position.getX(aIndex),position.getY(aIndex),position.getZ(aIndex));
+                    const b = new THREE.Vector3(position.getX(bIndex),position.getY(cIndex),position.getZ(bIndex));
+                    const c = new THREE.Vector3(position.getX(cIndex),position.getY(cIndex),position.getZ(cIndex));
+                    const ab = b.sub(a);
+                    const ac = c.sub(a);
+                    const faceDensity = ab.cross(ac).length();
+
+
+                    numFaces[aIndex]++;
+                    numFaces[bIndex]++;
+                    numFaces[cIndex]++;
+
+                    density[aIndex] += faceDensity;
+                    density[bIndex] += faceDensity;
+                    density[cIndex] += faceDensity;
+
+                   
+                    
+
+                }
+                let maxDensity = -Infinity;
+                let minDensity = Infinity;
+                for(let j = 0; j < numFaces.length; j++){
+                    if(numFaces[j] > 0){
+                      density[j] /= numFaces[j];
+                    }
+
+                    if(density[j] > maxDensity){
+                      maxDensity = density[j];
+                    } if(density[j] < minDensity){
+                      minDensity = density[j];
+                    }
                 }
 
-                let maxFaceCount = -Infinity;
-                let minFaceCount = Infinity;
-                for (let i = 0; i < vertexCount; i++) {
-                    const count = density[i];
-                    if (count > maxFaceCount) maxFaceCount = count;
-                    if (count < minFaceCount) minFaceCount = count;
-                }
 
-                console.log("MAX FACE (Density): ", maxFaceCount);
-                console.log("MIN FACE (Density): ", minFaceCount);
+                console.log("MAX FACE (Density): ", maxDensity);
+                console.log("MIN FACE (Density): ", minDensity);
 
                 const colors = [];
                 const color = new THREE.Color();
                 
                 for (let i = 0; i < vertexCount; i++) {
                     let heatValue = 0;
-                    if (maxFaceCount > minFaceCount) {
-                        heatValue = (density[i] - minFaceCount) / (maxFaceCount - minFaceCount);
+                    if (maxDensity != minDensity) {
+                        heatValue = (density[i] - minDensity) / (maxDensity - minDensity);
                     }
 
-                    color.setHSL((1 - heatValue) * 0.66, 1.0, 0.5); 
+                    color.setHSL((heatValue) * 0.66, 1.0, 0.5); 
+                    if(heatValue > 1 && heatValue < 0){
+                      console.log("bad heat value");
+                    }
                     colors.push(color.r, color.g, color.b);
                 }
 
