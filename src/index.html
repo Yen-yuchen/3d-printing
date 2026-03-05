@@ -305,6 +305,18 @@
       </aside>
 
       <main id="viewer"></main>
+      <div id="stress-legend" style="display: none; position: absolute; right: 20px; bottom: 30px; background: rgba(20,20,20,0.85); color: #fff; padding: 15px; border-radius: 8px; border: 1px solid #444; z-index: 1000; font-family: sans-serif; font-size: 12px; pointer-events: none;">
+          <div style="text-align: center; margin-bottom: 8px; font-weight: bold; color: #ff9800;">Von Mises Stress</div>
+          <div style="display: flex; height: 150px;">
+              <div style="width: 20px; background: linear-gradient(to top, blue, cyan, lime, yellow, red); border: 1px solid #666; border-radius: 3px;"></div>
+              <div style="display: flex; flex-direction: column; justify-content: space-between; margin-left: 10px;">
+                  <span style="color: #ff4444; font-weight: bold;">High (Max)</span>
+                  <span style="color: #ffff00;">Medium</span>
+                  <span style="color: #44aaff; font-weight: bold;">Low (Min)</span>
+              </div>
+          </div>
+      </div>
+      </div>
     </div>
 
     <script>

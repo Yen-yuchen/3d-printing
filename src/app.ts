@@ -939,9 +939,12 @@ const btnStressAnalysis = document.getElementById('btnStressAnalysis');
 
 if (btnStressAnalysis) {
     btnStressAnalysis.addEventListener('click', () => {
-        if (!currentModel) return;
+        if (!currentModel) {
+            alert("Please load a model first!");
+            return;
+        }
         
-        setStatus("Computing Von Mises Stress (Simulated)...");
+        setStatus("Computing Von Mises Stress (Top-Down Load)...");
 
         currentModel.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
@@ -950,35 +953,37 @@ if (btnStressAnalysis) {
                 
                 geometry.computeVertexNormals();
                 geometry.computeBoundingBox();
+                
+                const box = geometry.boundingBox!;
                 const centerPoint = new THREE.Vector3();
-                geometry.boundingBox!.getCenter(centerPoint);
+                box.getCenter(centerPoint);
+                
+                const yMax = box.max.y; 
+                const yMin = box.min.y; 
+                const totalHeight = yMax - yMin;
                 
                 const count = geometry.attributes.position.count;
                 const colors = new Float32Array(count * 3);
                 const pos = geometry.attributes.position;
-                const norm = geometry.attributes.normal;
-                
-                
                 
                 const stressValues: number[] = [];
                 let maxStress = 0;
                 let minStress = Infinity;
 
-                
-                
                 for (let i = 0; i < count; i++) {
-                    
-                    
                     const x = pos.getX(i);
                     const y = pos.getY(i);
                     const z = pos.getZ(i);
                     
+                    const depthFromTop = yMax - y; 
+                    const depthFactor = depthFromTop / totalHeight; 
                     
                     const dx = x - centerPoint.x;
-                        const dy = y - centerPoint.y;
-                        const dz = z - centerPoint.z;
-                        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);                    
-                        const stress = dist * 1.0;
+                    const dz = z - centerPoint.z;
+                    const horizontalRadius = Math.sqrt(dx*dx + dz*dz);
+                    
+                    
+                    let stress = depthFactor * (1.0 + horizontalRadius * 2.0);
                     
                     stressValues.push(stress);
                     if (stress > maxStress) maxStress = stress;
@@ -994,7 +999,8 @@ if (btnStressAnalysis) {
                         t = (val - minStress) / (maxStress - minStress);
                     }
 
-                    
+                    t = Math.pow(t, 1.5); 
+
                     color.setHSL(0.66 * (1.0 - t), 1.0, 0.5);
 
                     colors[i * 3] = color.r;
@@ -1006,13 +1012,15 @@ if (btnStressAnalysis) {
                 
                 mesh.material = new THREE.MeshStandardMaterial({
                     vertexColors: true,
-                    roughness: 0.5,
+                    roughness: 0.7, 
                     metalness: 0.1
                 });
             }
         });
 
-        setStatus("Von Mises Analysis Complete: Red = High Stress");
+        setStatus("Von Mises Analysis Complete: Red = High Stress (Top Load)");
+        const legend = document.getElementById('stress-legend');
+        if (legend) legend.style.display = 'block';
     });
 }
 
@@ -1351,6 +1359,60 @@ if (btnCreateUser) {
         createUserStatus.textContent = "Create request failed";
     }
   });
+}
+
+// ==========================================
+// Boundary Conditions Visualization 
+// ==========================================
+
+const btnSettings = document.getElementById('btn-settings');
+
+let boundaryHelpers: THREE.Object3D[] = [];
+
+if (btnSettings) {
+    btnSettings.addEventListener('click', () => {
+        if (!currentModel) {
+            alert("Please load a model first!");
+            return;
+        }
+
+        setStatus("Setting up Auto-Boundary Conditions...");
+
+        boundaryHelpers.forEach(helper => scene.remove(helper));
+        boundaryHelpers = [];
+
+        const box = new THREE.Box3().setFromObject(currentModel);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+
+        const floorGeo = new THREE.PlaneGeometry(size.x * 1.5, size.z * 1.5);
+        const floorMat = new THREE.MeshBasicMaterial({ 
+            color: 0x00aaff, 
+            transparent: true, 
+            opacity: 0.5, 
+            side: THREE.DoubleSide 
+        });
+        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        floorMesh.rotation.x = -Math.PI / 2; 
+        floorMesh.position.set(center.x, box.min.y, center.z);
+        
+        scene.add(floorMesh);
+        boundaryHelpers.push(floorMesh);
+
+        const dir = new THREE.Vector3(0, -1, 0); 
+        const origin = new THREE.Vector3(center.x, box.max.y + size.y * 0.2, center.z);
+        const length = size.y * 0.2; 
+        const hex = 0xff0000; 
+        
+        const arrowHelper = new THREE.ArrowHelper(dir, origin, length, hex, length * 0.4, length * 0.3);
+        scene.add(arrowHelper);
+        boundaryHelpers.push(arrowHelper);
+
+        setStatus("Boundary Conditions Set: Blue = Fixed, Red Arrow = Load");
+        console.log(`Model Y-Range: [Min: ${box.min.y.toFixed(2)}, Max: ${box.max.y.toFixed(2)}]`);
+    });
 }
 
 // Initialize UI from stored state
