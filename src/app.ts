@@ -18,27 +18,23 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
-import { SimplifyModifier } from "three/examples/jsm/modifiers/SimplifyModifier.js";
-import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
-// 把 STLExporter 換成 GLTFExporter
-import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
-import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter.js";
+import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';  // Used in Reduce Logic section
+import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";  // Used in Loader Logic section
+// Export formats for geometry output
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';  // Used in Export Logic section
+import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';  // Used in Export Logic section
 
 // ---  checkpoint system  ---
-let checkpointGeometry: THREE.BufferGeometry | null = null;
-let checkpointMesh: THREE.Mesh | null = null;
+// Used by: Checkpoint System section (lines ~1130+)
+let checkpointGeometry: THREE.BufferGeometry | null = null; 
+let checkpointMesh: THREE.Mesh | null = null; 
 
-// ---  catch UI  ---
-const btnSaveCheckpoint = document.getElementById(
-  "btnSaveCheckpoint",
-) as HTMLButtonElement;
-const btnRestoreCheckpoint = document.getElementById(
-  "btnRestoreCheckpoint",
-) as HTMLButtonElement;
-const btnToggleCheckpoint = document.getElementById(
-  "btnToggleCheckpoint",
-) as HTMLButtonElement;
-const checkpointStatus = document.getElementById("checkpointStatus");
+// ---  checkpoint system UI controls  ---
+// Used by: Checkpoint System section (lines ~1130+)
+const btnSaveCheckpoint = document.getElementById('btnSaveCheckpoint') as HTMLButtonElement;
+const btnRestoreCheckpoint = document.getElementById('btnRestoreCheckpoint') as HTMLButtonElement;
+const btnToggleCheckpoint = document.getElementById('btnToggleCheckpoint') as HTMLButtonElement;
+const checkpointStatus = document.getElementById('checkpointStatus');
 
 // ---------- UI Elements for Meshmixer Tools (Reduce Logic) ----------
 // Used by: Meshmixer Style: Reduce Logic section (lines ~640+)
@@ -105,10 +101,9 @@ const btnSaveModel = document.getElementById(
 ) as HTMLButtonElement | null;  // Save model to database button
 const authStatus = document.getElementById("authStatus") as HTMLElement | null;  // Auth status display (old UI)
 
-let currentModelId: number | null = null; // set after first save
-
-/** Optional UI variant (email-only login + panels) */
-const emailInput = document.getElementById("email") as HTMLInputElement | null;
+// ---------- UI Elements for Email-based Login (new panel UI) ----------
+// Used by: Email-only Login section (lines ~990+)
+const emailInput = document.getElementById("email") as HTMLInputElement | null;  // Email input (new UI)
 const loginBtnEmail = document.getElementById(
   "loginBtn",
 ) as HTMLButtonElement | null;  // Login button (new UI)
@@ -363,26 +358,26 @@ function collectExternalUris(gltfJson: any): Set<string> {
 // Updates UI to reflect current vertex counts
 // Used by: Budget mode toggle and simplification results display
 function updateBudgetInputFromCurrent() {
-  if (!currentModel) return;
-  let totalVerts = 0;
-  let totalOrig = 0;
-
-  currentModel.traverse((child) => {
-    if ((child as THREE.Mesh).isMesh) {
-      const mesh = child as THREE.Mesh;
-      totalVerts += mesh.geometry.attributes.position.count;
-      if (mesh.userData.originalGeometry) {
-        totalOrig += mesh.userData.originalGeometry.attributes.position.count;
-      } else {
-        totalOrig += mesh.geometry.attributes.position.count;
-      }
-    }
-  });
-
-  if (budgetInput) budgetInput.value = totalVerts.toString();
-  if (originalCountLabel) originalCountLabel.textContent = totalOrig.toString();
-  if (polyCountLabel)
-    polyCountLabel.textContent = `Current Vertices: ${totalVerts}`;
+    if (!currentModel) return;
+    let totalVerts = 0;
+    let totalOrig = 0;
+    
+    currentModel.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            totalVerts += mesh.geometry.attributes.position.count;
+            if (mesh.userData.originalGeometry) {
+                totalOrig += mesh.userData.originalGeometry.attributes.position.count;
+            } else {
+                
+                totalOrig += mesh.geometry.attributes.position.count;
+            }
+        }
+    });
+    
+    if (budgetInput) budgetInput.value = totalVerts.toString();
+    if (originalCountLabel) originalCountLabel.textContent = totalOrig.toString();
+    if (polyCountLabel) polyCountLabel.textContent = `Current Vertices: ${totalVerts}`;
 }
 
 // ==========================================
@@ -392,75 +387,61 @@ function updateBudgetInputFromCurrent() {
 // Formats supported: GLB, GLTF, STL, OBJ
 // Called by: fileInput change event listener
 async function loadSelection(files: FileList) {
-  const selected = Array.from(files);
-  if (selected.length === 0) return;
+    const selected = Array.from(files);
+    if (selected.length === 0) return;
 
-  const gltfFiles = selected.filter((f) =>
-    f.name.toLowerCase().endsWith(".gltf"),
-  );
-  const glbFiles = selected.filter((f) =>
-    f.name.toLowerCase().endsWith(".glb"),
-  );
-  const stlFiles = selected.filter((f) =>
-    f.name.toLowerCase().endsWith(".stl"),
-  );
-  const objFiles = selected.filter((f) =>
-    f.name.toLowerCase().endsWith(".obj"),
-  );
+    const gltfFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".gltf"));
+    const glbFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".glb"));
+    const stlFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".stl"));
+    const objFiles = selected.filter((f) => f.name.toLowerCase().endsWith(".obj"));
 
-  // Helper: Shared logic after any model is loaded
-  // Helper: Shared logic after any model is loaded
-  const onLoaded = (object: THREE.Object3D, fileName: string) => {
-    clearCurrentModel();
+    // Helper: Shared logic after any model is loaded
+    // Helper: Shared logic after any model is loaded
+    const onLoaded = (object: THREE.Object3D, fileName: string) => {
+        clearCurrentModel();
+        
+        currentModel = object;
+        
+        object.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                
+                if (mesh.geometry.isBufferGeometry) {
+                    console.log("Before merge: ", mesh.geometry.attributes.position.count);
+                    mesh.geometry = BufferGeometryUtils.mergeVertices(mesh.geometry, 0.001);
+                    mesh.geometry.computeVertexNormals(); 
+                    console.log("After merge: ", mesh.geometry.attributes.position.count);
+                }
 
-    currentModel = object;
+                if (!mesh.userData.originalGeometry) {
+                    mesh.userData.originalGeometry = mesh.geometry.clone();
+                }
+            }
+        });
 
-    object.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
+        scene.add(object);
+        cube.visible = false;
 
-        if (mesh.geometry.isBufferGeometry) {
-          console.log(
-            "Before merge: ",
-            mesh.geometry.attributes.position.count,
-          );
-          mesh.geometry = BufferGeometryUtils.mergeVertices(
-            mesh.geometry,
-            0.001,
-          );
-          mesh.geometry.computeVertexNormals();
-          console.log("After merge: ", mesh.geometry.attributes.position.count);
+        applyModelVisibility();
+        applyHelperVisibility();
+        applyScaleFromSlider();
+        applyWireframe();
+        fitCameraToObject(object);
+
+        setStatus(`Loaded: ${fileName}`);
+
+        // Reset Meshmixer UI
+        if (meshSlider) meshSlider.value = "100";
+        if (meshValue) {
+          meshValue.textContent = "100%";
+          meshValue.style.color = "#ff9800";
         }
+        updateBudgetInputFromCurrent();
 
-        if (!mesh.userData.originalGeometry) {
-          mesh.userData.originalGeometry = mesh.geometry.clone();
-        }
-      }
-    });
-
-    scene.add(object);
-    cube.visible = false;
-
-    applyModelVisibility();
-    applyHelperVisibility();
-    applyScaleFromSlider();
-    applyWireframe();
-    fitCameraToObject(object);
-
-    setStatus(`Loaded: ${fileName}`);
-
-    // Reset Meshmixer UI
-    if (meshSlider) meshSlider.value = "100";
-    if (meshValue) {
-      meshValue.textContent = "100%";
-      meshValue.style.color = "#ff9800";
-    }
-    updateBudgetInputFromCurrent();
-
-    // record last loaded file name (used when saving)
-    lastLoadedFileName = fileName;
-    updateSaveButtonState();
-  };
+        // record last loaded file name (used when saving)
+        lastLoadedFileName = fileName;
+        updateSaveButtonState();
+    };
 
   // ---- glTF JSON package ----
   if (gltfFiles.length > 0) {
@@ -572,19 +553,17 @@ async function loadSelection(files: FileList) {
     objLoader.load(
       url,
       (obj) => {
-        const initialColor = modelColorPicker
-          ? modelColorPicker.value
-          : "#9a9a9a";
+        const initialColor = modelColorPicker ? modelColorPicker.value : "#9a9a9a";
         const mat = new THREE.MeshStandardMaterial({
           color: initialColor,
-          roughness: 0.8,
+          roughness: 0.8, 
           metalness: 0.0,
         });
-
+        
         obj.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            (child as THREE.Mesh).material = mat;
-          }
+            if ((child as THREE.Mesh).isMesh) {
+                (child as THREE.Mesh).material = mat;
+            }
         });
         onLoaded(obj, mainSingle.name);
         URL.revokeObjectURL(url);
@@ -636,120 +615,114 @@ if (bgColorPicker) {
 // Calculates surface area density at each vertex using face information
 // Used by: Viewer canvas click event
 viewer.addEventListener("click", () => {
-  let mesh = getMesh(currentModel);
-  if (mesh) {
-    if (mesh.geometry.isBufferGeometry) {
-      const position = mesh.geometry.attributes.position;
-      const index = mesh.geometry.index;
+    let mesh = getMesh(currentModel);
+    if (mesh) {
+        if (mesh.geometry.isBufferGeometry) {
+            const position = mesh.geometry.attributes.position;
+            const index = mesh.geometry.index;
+            
+            if (position && index) {
+                const vertexCount = position.count;
+                const density: number[] = new Array(vertexCount).fill(0);
+                const numFaces: number[] = new Array(vertexCount).fill(0);
 
-      if (position && index) {
-        const vertexCount = position.count;
-        const density: number[] = new Array(vertexCount).fill(0);
-        const numFaces: number[] = new Array(vertexCount).fill(0);
+               
 
-        for (let j = 0; j < index.count; j += 3) {
-          const aIndex = index.getX(j);
-          const bIndex = index.getY(j);
-          const cIndex = index.getZ(j);
+                for (let j = 0; j < index.count; j += 3) {
+                    const aIndex = index.getX(j);
+                    const bIndex = index.getY(j);
+                    const cIndex = index.getZ(j);
 
-          const a = new THREE.Vector3(
-            position.getX(aIndex),
-            position.getY(aIndex),
-            position.getZ(aIndex),
-          );
-          const b = new THREE.Vector3(
-            position.getX(bIndex),
-            position.getY(cIndex),
-            position.getZ(bIndex),
-          );
-          const c = new THREE.Vector3(
-            position.getX(cIndex),
-            position.getY(cIndex),
-            position.getZ(cIndex),
-          );
-          const ab = b.sub(a);
-          const ac = c.sub(a);
-          const faceDensity = ab.cross(ac).length();
+                    const a = new THREE.Vector3(position.getX(aIndex),position.getY(aIndex),position.getZ(aIndex));
+                    const b = new THREE.Vector3(position.getX(bIndex),position.getY(cIndex),position.getZ(bIndex));
+                    const c = new THREE.Vector3(position.getX(cIndex),position.getY(cIndex),position.getZ(cIndex));
+                    const ab = b.sub(a);
+                    const ac = c.sub(a);
+                    const faceDensity = ab.cross(ac).length();
 
-          numFaces[aIndex]++;
-          numFaces[bIndex]++;
-          numFaces[cIndex]++;
 
-          density[aIndex] += faceDensity;
-          density[bIndex] += faceDensity;
-          density[cIndex] += faceDensity;
+                    numFaces[aIndex]++;
+                    numFaces[bIndex]++;
+                    numFaces[cIndex]++;
+
+                    density[aIndex] += faceDensity;
+                    density[bIndex] += faceDensity;
+                    density[cIndex] += faceDensity;
+
+                   
+                    
+
+                }
+                let maxDensity = -Infinity;
+                let minDensity = Infinity;
+                for(let j = 0; j < numFaces.length; j++){
+                    if(numFaces[j] > 0){
+                      density[j] /= numFaces[j];
+                    }
+
+                    if(density[j] > maxDensity){
+                      maxDensity = density[j];
+                    } if(density[j] < minDensity){
+                      minDensity = density[j];
+                    }
+                }
+
+
+                console.log("MAX FACE (Density): ", maxDensity);
+                console.log("MIN FACE (Density): ", minDensity);
+
+                const colors = [];
+                const color = new THREE.Color();
+                
+                for (let i = 0; i < vertexCount; i++) {
+                    let heatValue = 0;
+                    if (maxDensity != minDensity) {
+                        heatValue = (density[i] - minDensity) / (maxDensity - minDensity);
+                    }
+
+                    color.setHSL((heatValue) * 0.66, 1.0, 0.5); 
+                    if(heatValue > 1 && heatValue < 0){
+                      console.log("bad heat value");
+                    }
+                    colors.push(color.r, color.g, color.b);
+                }
+
+                mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                const material = mesh.material as THREE.MeshStandardMaterial;
+                material.vertexColors = true;
+                material.needsUpdate = true;
+            } else {
+                console.warn("");
+            }
         }
-        let maxDensity = -Infinity;
-        let minDensity = Infinity;
-        for (let j = 0; j < numFaces.length; j++) {
-          if (numFaces[j] > 0) {
-            density[j] /= numFaces[j];
-          }
-
-          if (density[j] > maxDensity) {
-            maxDensity = density[j];
-          }
-          if (density[j] < minDensity) {
-            minDensity = density[j];
-          }
-        }
-
-        console.log("MAX FACE (Density): ", maxDensity);
-        console.log("MIN FACE (Density): ", minDensity);
-
-        const colors = [];
-        const color = new THREE.Color();
-
-        for (let i = 0; i < vertexCount; i++) {
-          let heatValue = 0;
-          if (maxDensity != minDensity) {
-            heatValue = (density[i] - minDensity) / (maxDensity - minDensity);
-          }
-
-          color.setHSL(heatValue * 0.66, 1.0, 0.5);
-          if (heatValue > 1 && heatValue < 0) {
-            console.log("bad heat value");
-          }
-          colors.push(color.r, color.g, color.b);
-        }
-
-        mesh.geometry.setAttribute(
-          "color",
-          new THREE.Float32BufferAttribute(colors, 3),
-        );
-        const material = mesh.material as THREE.MeshStandardMaterial;
-        material.vertexColors = true;
-        material.needsUpdate = true;
-      } else {
-        console.warn("");
-      }
     }
-  }
 });
 
-function getMesh(object: THREE.Object3D | null): THREE.Mesh | null {
-  if (object?.type == "Mesh") {
-    return object as THREE.Mesh;
-  }
-  if (!(object instanceof THREE.Object3D)) {
-    console.error("Provided object is not a THREE.Object3D or Group.");
+// Utility: Recursively finds first mesh in object hierarchy
+// Used by: Density visualization and other mesh operations
+function getMesh(object: THREE.Object3D | null): THREE.Mesh | null{
+    if(object?.type == "Mesh"){
+        return object as THREE.Mesh;
+    }
+    if (!(object instanceof THREE.Object3D)) {
+        console.error("Provided object is not a THREE.Object3D or Group.");
+        return null;
+    }
+
+    // Search through children
+    for (let child of object.children) {
+        if (child.type == "Mesh") {
+            return child as THREE.Mesh; // Found the first mesh
+        }
+        // If the child is another group or Object3D, search inside it
+        if (child.children && child.children.length > 0) {
+            const mesh = getMesh(child);
+            if (mesh) return mesh;
+        }
+    }
+
+    // No mesh found
     return null;
-  }
-
-  // Search through children
-  for (let child of object.children) {
-    if (child.type == "Mesh") {
-      return child as THREE.Mesh; // Found the first mesh
-    }
-    // If the child is another group or Object3D, search inside it
-    if (child.children && child.children.length > 0) {
-      const mesh = getMesh(child);
-      if (mesh) return mesh;
-    }
-  }
-
-  // No mesh found
-  return null;
 }
 
 // 2. Model Color Picker
@@ -931,329 +904,357 @@ if (btnApplyBudget && budgetInput) {
   });
 }
 // ==========================================
-// Checkpoint System
+// Checkpoint System 
 // ==========================================
+// Allows users to save, restore, and visualize geometry checkpoints
+// Useful for: Comparing before/after simplification, iterative editing
+// Related to: Reduce Logic section (mesh modifications)
+// Features:
+//  - Save current mesh geometry state
+//  - Restore to previous geometry state
+//  - Toggle overlay visualization of checkpoint vs current
 
 // make sure all buttons exist before adding event listeners
 if (btnSaveCheckpoint && btnRestoreCheckpoint && btnToggleCheckpoint) {
-  // --- (Save) ---
-  btnSaveCheckpoint.addEventListener("click", () => {
-    if (!currentModel) return;
+    
+    // --- (Save) ---
+    // Captures current geometry and saves it for later comparison/restoration
+    // Triggered by: btnSaveCheckpoint click
+    btnSaveCheckpoint.addEventListener('click', () => {
+        if (!currentModel) return;
+        
+        let found = false;
+        currentModel.traverse((child) => {
+            
+            if (!found && (child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                
+                checkpointGeometry = mesh.geometry.clone();
+                found = true;
+            }
+        });
 
-    let found = false;
-    currentModel.traverse((child) => {
-      if (!found && (child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-
-        checkpointGeometry = mesh.geometry.clone();
-        found = true;
-      }
+        if (found) {
+            btnRestoreCheckpoint.disabled = false;
+            btnToggleCheckpoint.disabled = false;
+            
+            if (checkpointStatus) {
+                const time = new Date().toLocaleTimeString();
+                checkpointStatus.textContent = `Saved at ${time}`;
+                checkpointStatus.style.color = '#4caf50'; 
+            }
+            
+            updateGhostOverlay();
+            
+            console.log("Checkpoint saved!");
+        }
     });
 
-    if (found) {
-      btnRestoreCheckpoint.disabled = false;
-      btnToggleCheckpoint.disabled = false;
+    // --- Restore ---
+    btnRestoreCheckpoint.addEventListener('click', () => {
+        if (!currentModel || !checkpointGeometry) return;
+        
+        currentModel.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                
+                mesh.geometry.dispose();
+                mesh.geometry = checkpointGeometry!.clone();
+                
+                const currentVerts = mesh.geometry.attributes.position.count;
+                
+                const polyCountLabel = document.getElementById('polyCount');
+                if (polyCountLabel) {
+                    polyCountLabel.textContent = `Current Vertices: ${currentVerts}`;
+                }
 
-      if (checkpointStatus) {
-        const time = new Date().toLocaleTimeString();
-        checkpointStatus.textContent = `Saved at ${time}`;
-        checkpointStatus.style.color = "#4caf50";
-      }
+                if (mesh.userData.originalGeometry) {
+                    const origVerts = mesh.userData.originalGeometry.attributes.position.count;
+                    
+                    let restoredPercentage = Math.round((currentVerts / origVerts) * 100);
+                    
+                    if (restoredPercentage > 100) restoredPercentage = 100;
+                    if (restoredPercentage < 0) restoredPercentage = 0;
 
-      updateGhostOverlay();
+                    if (meshSlider) {
+                        meshSlider.value = restoredPercentage.toString();
+                    }
+                    if (meshValue) {
+                        meshValue.textContent = `${restoredPercentage}%`;
+                        meshValue.style.color = "#ff9800";
+                    }
 
-      console.log("Checkpoint saved!");
-    }
-  });
-
-  // --- Restore ---
-  btnRestoreCheckpoint.addEventListener("click", () => {
-    if (!currentModel || !checkpointGeometry) return;
-
-    currentModel.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-
-        mesh.geometry.dispose();
-        mesh.geometry = checkpointGeometry!.clone();
-
-        const currentVerts = mesh.geometry.attributes.position.count;
-
-        const polyCountLabel = document.getElementById("polyCount");
-        if (polyCountLabel) {
-          polyCountLabel.textContent = `Current Vertices: ${currentVerts}`;
-        }
-
-        if (mesh.userData.originalGeometry) {
-          const origVerts =
-            mesh.userData.originalGeometry.attributes.position.count;
-
-          let restoredPercentage = Math.round((currentVerts / origVerts) * 100);
-
-          if (restoredPercentage > 100) restoredPercentage = 100;
-          if (restoredPercentage < 0) restoredPercentage = 0;
-
-          if (meshSlider) {
-            meshSlider.value = restoredPercentage.toString();
-          }
-          if (meshValue) {
-            meshValue.textContent = `${restoredPercentage}%`;
-            meshValue.style.color = "#ff9800";
-          }
-
-          if (budgetInput) {
-            budgetInput.value = currentVerts.toString();
-          }
-        }
-      }
+                    if (budgetInput) {
+                        budgetInput.value = currentVerts.toString();
+                    }
+                }
+            }
+        });
+        
+        console.log("Model restored from checkpoint and UI synced.");
     });
 
-    console.log("Model restored from checkpoint and UI synced.");
-  });
-
-  // ---  Overlay ---
-  let isGhostVisible = false;
-
-  btnToggleCheckpoint.addEventListener("click", () => {
-    if (!checkpointMesh) {
-      updateGhostOverlay();
-    }
-
-    isGhostVisible = !isGhostVisible;
-
-    if (checkpointMesh) {
-      checkpointMesh.visible = isGhostVisible;
-    }
-
-    btnToggleCheckpoint.style.background = isGhostVisible ? "#d9534f" : "";
-    btnToggleCheckpoint.innerHTML = isGhostVisible
-      ? '<i class="fa-solid fa-ghost"></i> Hide Overlay'
-      : '<i class="fa-solid fa-ghost"></i> Show Overlay';
-  });
+    // ---  Overlay ---
+    let isGhostVisible = false;
+    
+    btnToggleCheckpoint.addEventListener('click', () => {
+        if (!checkpointMesh) {
+            updateGhostOverlay();
+        }
+        
+        
+        isGhostVisible = !isGhostVisible;
+        
+        if (checkpointMesh) {
+            checkpointMesh.visible = isGhostVisible;
+        }
+        
+        btnToggleCheckpoint.style.background = isGhostVisible ? '#d9534f' : ''; 
+        btnToggleCheckpoint.innerHTML = isGhostVisible ? 
+            '<i class="fa-solid fa-ghost"></i> Hide Overlay' : 
+            '<i class="fa-solid fa-ghost"></i> Show Overlay';
+    });
 }
 
 //
 function updateGhostOverlay() {
-  if (!checkpointGeometry) return;
-
-  if (checkpointMesh) {
-    scene.remove(checkpointMesh);
-    if (checkpointMesh.geometry) checkpointMesh.geometry.dispose();
-    checkpointMesh = null;
-  }
-
-  const material = new THREE.MeshBasicMaterial({
-    color: 0xff0000,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.3,
-    depthTest: true, //  should always be visible on top
-  });
-
-  // create Mesh
-  checkpointMesh = new THREE.Mesh(checkpointGeometry, material);
-  checkpointMesh.visible = false;
-
-  let targetMesh: THREE.Mesh | null = null;
-
-  currentModel!.traverse((child) => {
-    if (!targetMesh && (child as THREE.Mesh).isMesh) {
-      targetMesh = child as THREE.Mesh;
+    if (!checkpointGeometry) return;
+    
+    if (checkpointMesh) {
+        scene.remove(checkpointMesh);
+        if (checkpointMesh.geometry) checkpointMesh.geometry.dispose();
+        checkpointMesh = null;
     }
-  });
 
-  if (targetMesh !== null) {
-    const worldPos = new THREE.Vector3();
-    const worldQuat = new THREE.Quaternion();
-    const worldScale = new THREE.Vector3();
+    const material = new THREE.MeshBasicMaterial({
+        color: 0xff0000,   
+        wireframe: true,   
+        transparent: true, 
+        opacity: 0.3,      
+        depthTest: true   //  should always be visible on top
+    });
+    
+    // create Mesh
+    checkpointMesh = new THREE.Mesh(checkpointGeometry, material);
+    checkpointMesh.visible = false; 
+    
+    
+    let targetMesh: THREE.Mesh | null = null;
 
-    (targetMesh as THREE.Mesh).getWorldPosition(worldPos);
-    (targetMesh as THREE.Mesh).getWorldQuaternion(worldQuat);
-    (targetMesh as THREE.Mesh).getWorldScale(worldScale);
-
-    checkpointMesh.position.copy(worldPos);
-    checkpointMesh.quaternion.copy(worldQuat);
-    checkpointMesh.scale.copy(worldScale);
-
-    checkpointMesh.scale.multiplyScalar(1.01);
-  }
-
-  scene.add(checkpointMesh);
-}
-
-// ==========================================
-// Von Mises Stress Visualization
-// ==========================================
-
-const btnStressAnalysis = document.getElementById("btnStressAnalysis");
-
-if (btnStressAnalysis) {
-  btnStressAnalysis.addEventListener("click", () => {
-    if (!currentModel) return;
-
-    setStatus("Computing Von Mises Stress (Simulated)...");
-
-    currentModel.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        const geometry = mesh.geometry;
-
-        geometry.computeVertexNormals();
-        geometry.computeBoundingBox();
-        const centerPoint = new THREE.Vector3();
-        geometry.boundingBox!.getCenter(centerPoint);
-
-        const count = geometry.attributes.position.count;
-        const colors = new Float32Array(count * 3);
-        const pos = geometry.attributes.position;
-        const norm = geometry.attributes.normal;
-
-        const stressValues: number[] = [];
-        let maxStress = 0;
-        let minStress = Infinity;
-
-        for (let i = 0; i < count; i++) {
-          const x = pos.getX(i);
-          const y = pos.getY(i);
-          const z = pos.getZ(i);
-
-          const dx = x - centerPoint.x;
-          const dy = y - centerPoint.y;
-          const dz = z - centerPoint.z;
-          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-          const stress = dist * 1.0;
-
-          stressValues.push(stress);
-          if (stress > maxStress) maxStress = stress;
-          if (stress < minStress) minStress = stress;
+    currentModel!.traverse((child) => {
+        if (!targetMesh && (child as THREE.Mesh).isMesh) {
+            targetMesh = child as THREE.Mesh;
         }
-
-        const color = new THREE.Color();
-        for (let i = 0; i < count; i++) {
-          const val = stressValues[i];
-
-          let t = 0;
-          if (maxStress > minStress) {
-            t = (val - minStress) / (maxStress - minStress);
-          }
-
-          color.setHSL(0.66 * (1.0 - t), 1.0, 0.5);
-
-          colors[i * 3] = color.r;
-          colors[i * 3 + 1] = color.g;
-          colors[i * 3 + 2] = color.b;
-        }
-
-        geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-
-        mesh.material = new THREE.MeshStandardMaterial({
-          vertexColors: true,
-          roughness: 0.5,
-          metalness: 0.1,
-        });
-      }
     });
 
-    setStatus("Von Mises Analysis Complete: Red = High Stress");
-  });
+    if (targetMesh !== null) {
+        const worldPos = new THREE.Vector3();
+        const worldQuat = new THREE.Quaternion();
+        const worldScale = new THREE.Vector3();
+
+        (targetMesh as THREE.Mesh).getWorldPosition(worldPos);
+        (targetMesh as THREE.Mesh).getWorldQuaternion(worldQuat);
+        (targetMesh as THREE.Mesh).getWorldScale(worldScale);
+
+        checkpointMesh.position.copy(worldPos);
+        checkpointMesh.quaternion.copy(worldQuat);
+        checkpointMesh.scale.copy(worldScale);
+
+        checkpointMesh.scale.multiplyScalar(1.01);
+    }
+    
+    
+    scene.add(checkpointMesh);
 }
 
 // ==========================================
-// Export Logic
+// Von Mises Stress Visualization 
 // ==========================================
 
-const btnExportGLB = document.getElementById("btnExportGLB");
-const btnExportOBJ = document.getElementById("btnExportOBJ");
+const btnStressAnalysis = document.getElementById('btnStressAnalysis');
+
+if (btnStressAnalysis) {
+    btnStressAnalysis.addEventListener('click', () => {
+        if (!currentModel) {
+            alert("Please load a model first!");
+            return;
+        }
+        
+        setStatus("Computing Von Mises Stress (Top-Down Load)...");
+
+        currentModel.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                const geometry = mesh.geometry;
+                
+                geometry.computeVertexNormals();
+                geometry.computeBoundingBox();
+                
+                const box = geometry.boundingBox!;
+                const centerPoint = new THREE.Vector3();
+                box.getCenter(centerPoint);
+                
+                const yMax = box.max.y; 
+                const yMin = box.min.y; 
+                const totalHeight = yMax - yMin;
+                
+                const count = geometry.attributes.position.count;
+                const colors = new Float32Array(count * 3);
+                const pos = geometry.attributes.position;
+                
+                const stressValues: number[] = [];
+                let maxStress = 0;
+                let minStress = Infinity;
+
+                for (let i = 0; i < count; i++) {
+                    const x = pos.getX(i);
+                    const y = pos.getY(i);
+                    const z = pos.getZ(i);
+                    
+                    const depthFromTop = yMax - y; 
+                    const depthFactor = depthFromTop / totalHeight; 
+                    
+                    const dx = x - centerPoint.x;
+                    const dz = z - centerPoint.z;
+                    const horizontalRadius = Math.sqrt(dx*dx + dz*dz);
+                    
+                    
+                    let stress = depthFactor * (1.0 + horizontalRadius * 2.0);
+                    
+                    stressValues.push(stress);
+                    if (stress > maxStress) maxStress = stress;
+                    if (stress < minStress) minStress = stress;
+                }
+
+                const color = new THREE.Color();
+                for (let i = 0; i < count; i++) {
+                    const val = stressValues[i];
+                    
+                    let t = 0;
+                    if (maxStress > minStress) {
+                        t = (val - minStress) / (maxStress - minStress);
+                    }
+
+                    t = Math.pow(t, 1.5); 
+
+                    color.setHSL(0.66 * (1.0 - t), 1.0, 0.5);
+
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                
+                mesh.material = new THREE.MeshStandardMaterial({
+                    vertexColors: true,
+                    roughness: 0.7, 
+                    metalness: 0.1
+                });
+            }
+        });
+
+        setStatus("Von Mises Analysis Complete: Red = High Stress (Top Load)");
+        const legend = document.getElementById('stress-legend');
+        if (legend) legend.style.display = 'block';
+    });
+}
+
+// ==========================================
+// Export Logic 
+// ==========================================
+
+const btnExportGLB = document.getElementById('btnExportGLB');
+const btnExportOBJ = document.getElementById('btnExportOBJ');
 
 function downloadFile(data: any, filename: string, mimeType: string) {
-  const blob = new Blob([data], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.style.display = "none";
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    const blob = new Blob([data], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
-function exportCorrectedModel(exporterType: "glb" | "obj") {
-  if (!currentModel) {
-    alert("No model to export!");
-    return;
-  }
 
-  setStatus(`Preparing ${exporterType.toUpperCase()} for export...`);
 
-  const exportScene = new THREE.Scene();
-  currentModel.updateMatrixWorld(true);
+function exportCorrectedModel(exporterType: 'glb' | 'obj') {
+    if (!currentModel) {
+        alert("No model to export!");
+        return;
+    }
 
-  currentModel.traverse((child) => {
-    if ((child as THREE.Mesh).isMesh) {
-      const mesh = child as THREE.Mesh;
+    setStatus(`Preparing ${exporterType.toUpperCase()} for export...`);
 
-      const cloneGeo = mesh.geometry.clone();
+    const exportScene = new THREE.Scene();
+    currentModel.updateMatrixWorld(true);
 
-      let cloneMat;
-      if (Array.isArray(mesh.material)) {
-        cloneMat = mesh.material.map((m) => {
-          const newMat = m.clone();
-          if ("wireframe" in newMat) {
-            (newMat as any).wireframe = false;
-          }
-          return newMat;
-        });
-      } else {
-        cloneMat = mesh.material.clone();
-        if ("wireframe" in cloneMat) {
-          (cloneMat as any).wireframe = false;
+    currentModel.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            
+            const cloneGeo = mesh.geometry.clone();
+            
+            let cloneMat;
+            if (Array.isArray(mesh.material)) {
+                cloneMat = mesh.material.map(m => {
+                    const newMat = m.clone();
+                    if ('wireframe' in newMat) {
+                        (newMat as any).wireframe = false;
+                    }
+                    return newMat;
+                });
+            } else {
+                cloneMat = mesh.material.clone();
+                if ('wireframe' in cloneMat) {
+                    (cloneMat as any).wireframe = false;
+                }
+            }
+
+            const cloneMesh = new THREE.Mesh(cloneGeo, cloneMat);
+            cloneGeo.applyMatrix4(mesh.matrixWorld);
+            exportScene.add(cloneMesh);
         }
-      }
+    });
 
-      const cloneMesh = new THREE.Mesh(cloneGeo, cloneMat);
-      cloneGeo.applyMatrix4(mesh.matrixWorld);
-      exportScene.add(cloneMesh);
+    try {
+        if (exporterType === 'glb') {
+            const exporter = new GLTFExporter();
+            exporter.parse(
+                exportScene,
+                (result) => {
+                    downloadFile(result, 'simplified_model.glb', 'application/octet-stream');
+                    setStatus("GLB Exported Successfully!");
+                },
+                (error) => {
+                    console.error("GLB Export Error:", error);
+                    setStatus("Failed to export GLB");
+                },
+                { binary: true } 
+            );
+        } else {
+            const exporter = new OBJExporter();
+            const result = exporter.parse(exportScene);
+            downloadFile(result, 'simplified_model.obj', 'text/plain');
+            setStatus("OBJ Exported Successfully!");
+        }
+    } catch (e) {
+        console.error("Export Error", e);
+        setStatus(`Failed to export ${exporterType.toUpperCase()}`);
     }
-  });
-
-  try {
-    if (exporterType === "glb") {
-      const exporter = new GLTFExporter();
-      exporter.parse(
-        exportScene,
-        (result) => {
-          downloadFile(
-            result,
-            "simplified_model.glb",
-            "application/octet-stream",
-          );
-          setStatus("GLB Exported Successfully!");
-        },
-        (error) => {
-          console.error("GLB Export Error:", error);
-          setStatus("Failed to export GLB");
-        },
-        { binary: true },
-      );
-    } else {
-      const exporter = new OBJExporter();
-      const result = exporter.parse(exportScene);
-      downloadFile(result, "simplified_model.obj", "text/plain");
-      setStatus("OBJ Exported Successfully!");
-    }
-  } catch (e) {
-    console.error("Export Error", e);
-    setStatus(`Failed to export ${exporterType.toUpperCase()}`);
-  }
 }
+
 
 if (btnExportGLB) {
-  btnExportGLB.addEventListener("click", () => exportCorrectedModel("glb"));
+    btnExportGLB.addEventListener('click', () => exportCorrectedModel('glb'));
 }
 
 if (btnExportOBJ) {
-  btnExportOBJ.addEventListener("click", () => exportCorrectedModel("obj"));
+    btnExportOBJ.addEventListener('click', () => exportCorrectedModel('obj'));
 }
 
 // ==========================================
@@ -1453,54 +1454,50 @@ if (btnLogout) {
 
 if (btnSaveModel) {
   btnSaveModel.addEventListener("click", async () => {
-    console.log("Attempting to save model");
-
-    if (!lastLoadedFile || !lastLoadedFileName) {
-      alert("No model file loaded to save");
+    if (!lastLoadedFileName) {
+      alert("No model loaded to save");
       return;
     }
-
     const token = getAuthToken();
     if (!token) {
       alert("Please login before saving");
       return;
     }
 
-    // optional: compute vertices for logging/metadata (not stored in DB currently)
-    const uploadedAt = new Date().toISOString();
-
-    const fd = new FormData();
-    fd.append("file", lastLoadedFile); // multer expects field name "file"
-    fd.append("model_name", lastLoadedFileName); // backend reads req.body.model_name
-    fd.append("uploadedAt", uploadedAt);
-
-    // IMPORTANT: send model_id if we have one, so backend can UPDATE
-    if (currentModelId !== null) {
-      fd.append("model_id", String(currentModelId));
-    }
+    // Build minimal metadata
+    const payload = {
+      name: lastLoadedFileName,
+      uploadedAt: new Date().toISOString(),
+      // optionally include vertex count if available
+      vertices: (() => {
+        if (!currentModel) return 0;
+        let total = 0;
+        currentModel.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            total += mesh.geometry.attributes.position.count;
+          }
+        });
+        return total;
+      })(),
+    };
 
     try {
-      const res = await fetch("/api/models", {
+      const res = await fetch("/api/projects", {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          // DO NOT set Content-Type when sending FormData
         },
-        body: fd,
+        body: JSON.stringify(payload),
       });
-
       if (!res.ok) {
         const txt = await res.text();
         alert(`Save failed: ${res.status} ${txt}`);
         return;
       }
-
       const row = await res.json();
-
-      // Store the id so future saves update instead of insert
-      if (row?.model_id != null) currentModelId = Number(row.model_id);
-
-      console.log("Saved model row:", row);
+      console.log("Saved project", row);
       setStatus("Model saved");
     } catch (err) {
       console.error("Save error", err);
@@ -1508,7 +1505,15 @@ if (btnSaveModel) {
     }
   });
 }
-// Create User functionality
+
+// ==========================================
+// Create User Functionality
+// ==========================================
+// Allows registration of new users in database
+// API Endpoint: POST /api/users
+// Returns: 201 on success, 409 if email exists
+// Related to: Auth System
+
 if (btnCreateUser) {
   btnCreateUser.addEventListener("click", async () => {
     const name = newUserName?.value?.trim();
@@ -1545,6 +1550,63 @@ if (btnCreateUser) {
         createUserStatus.textContent = "Create request failed";
     }
   });
+}
+
+// ==========================================
+// Boundary Conditions Visualization 
+// ==========================================
+// Displays support points and load directions for stress analysis
+// Used by: Von Mises Stress visualization workflow
+// Related to: Von Mises Stress Visualization section
+
+const btnSettings = document.getElementById('btn-settings');
+
+let boundaryHelpers: THREE.Object3D[] = [];  // Stores visual helpers for cleanup
+
+if (btnSettings) {
+    btnSettings.addEventListener('click', () => {
+        if (!currentModel) {
+            alert("Please load a model first!");
+            return;
+        }
+
+        setStatus("Setting up Auto-Boundary Conditions...");
+
+        boundaryHelpers.forEach(helper => scene.remove(helper));
+        boundaryHelpers = [];
+
+        const box = new THREE.Box3().setFromObject(currentModel);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+
+        const floorGeo = new THREE.PlaneGeometry(size.x * 1.5, size.z * 1.5);
+        const floorMat = new THREE.MeshBasicMaterial({ 
+            color: 0x00aaff, 
+            transparent: true, 
+            opacity: 0.5, 
+            side: THREE.DoubleSide 
+        });
+        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        floorMesh.rotation.x = -Math.PI / 2; 
+        floorMesh.position.set(center.x, box.min.y, center.z);
+        
+        scene.add(floorMesh);
+        boundaryHelpers.push(floorMesh);
+
+        const dir = new THREE.Vector3(0, -1, 0); 
+        const origin = new THREE.Vector3(center.x, box.max.y + size.y * 0.2, center.z);
+        const length = size.y * 0.2; 
+        const hex = 0xff0000; 
+        
+        const arrowHelper = new THREE.ArrowHelper(dir, origin, length, hex, length * 0.4, length * 0.3);
+        scene.add(arrowHelper);
+        boundaryHelpers.push(arrowHelper);
+
+        setStatus("Boundary Conditions Set: Blue = Fixed, Red Arrow = Load");
+        console.log(`Model Y-Range: [Min: ${box.min.y.toFixed(2)}, Max: ${box.max.y.toFixed(2)}]`);
+    });
 }
 
 // Initialize UI from stored state
