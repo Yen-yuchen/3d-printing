@@ -1,110 +1,143 @@
+// ==========================================
+// 3D Printing Model Viewer & Meshmixer Tools
+// ==========================================
+// Main application combining Three.js 3D viewer with mesh simplification
+// and model analysis features.
+//
+// Key Features:
+//  - Load & display 3D models (GLB, GLTF, STL, OBJ)
+//  - Mesh simplification using SimplifyModifier (percentage & budget modes)
+//  - Checkpoint system for geometry versioning
+//  - Von Mises stress visualization
+//  - Model export (GLB, OBJ formats)
+//  - User authentication & project saving
+// ==========================================
+
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
-import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
-import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
-// 把 STLExporter 換成 GLTFExporter
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
+import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';  // Used in Reduce Logic section
+import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";  // Used in Loader Logic section
+// Export formats for geometry output
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';  // Used in Export Logic section
+import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';  // Used in Export Logic section
 
 // ---  checkpoint system  ---
+// Used by: Checkpoint System section (lines ~1130+)
 let checkpointGeometry: THREE.BufferGeometry | null = null; 
 let checkpointMesh: THREE.Mesh | null = null; 
 
-// ---  catch UI  ---
+// ---  checkpoint system UI controls  ---
+// Used by: Checkpoint System section (lines ~1130+)
 const btnSaveCheckpoint = document.getElementById('btnSaveCheckpoint') as HTMLButtonElement;
 const btnRestoreCheckpoint = document.getElementById('btnRestoreCheckpoint') as HTMLButtonElement;
 const btnToggleCheckpoint = document.getElementById('btnToggleCheckpoint') as HTMLButtonElement;
 const checkpointStatus = document.getElementById('checkpointStatus');
 
-// ---------- UI Elements for Meshmixer Tools ----------
+// ---------- UI Elements for Meshmixer Tools (Reduce Logic) ----------
+// Used by: Meshmixer Style: Reduce Logic section (lines ~640+)
+// Purpose: Enable percentage-based and budget-based mesh simplification
 const reduceTargetSelect = document.getElementById(
   "reduceTargetMode",
-) as HTMLSelectElement;
-const controlPercent = document.getElementById("control-percentage");
-const controlBudget = document.getElementById("control-budget");
+) as HTMLSelectElement;  // Toggle between percentage and budget modes
+const controlPercent = document.getElementById("control-percentage");  // Percentage mode controls
+const controlBudget = document.getElementById("control-budget");  // Budget mode controls
 
 const meshSlider = document.getElementById(
   "meshDensitySlider",
-) as HTMLInputElement;
-const meshValue = document.getElementById("meshDensityValue") as HTMLElement;
+) as HTMLInputElement;  // Percentage slider (0-100%)
+const meshValue = document.getElementById("meshDensityValue") as HTMLElement;  // Display percentage value
 
 const budgetInput = document.getElementById(
   "polyBudgetInput",
-) as HTMLInputElement;
-const btnApplyBudget = document.getElementById("btnApplyBudget");
-const originalCountLabel = document.getElementById("originalCountLabel");
+) as HTMLInputElement;  // Target vertex count input
+const btnApplyBudget = document.getElementById("btnApplyBudget");  // Apply budget reduction button
+const originalCountLabel = document.getElementById("originalCountLabel");  // Display original vertex count
 
-const polyCountLabel = document.getElementById("polyCount");
-const modifier = new SimplifyModifier();
+const polyCountLabel = document.getElementById("polyCount");  // Display current vertex count
+const modifier = new SimplifyModifier();  // Instance used by performSimplification() function
 
-const viewer = document.getElementById("viewer") as HTMLDivElement;
+const viewer = document.getElementById("viewer") as HTMLDivElement;  // Main 3D canvas container
 
+// ---------- UI Elements for Export Logic ----------
+// Used by: Export Logic section (lines ~900+)
 const exportBtn = document.getElementById(
   "DbButton",
-) as HTMLButtonElement | null;
+) as HTMLButtonElement | null;  // Database/Export button
 
-// Create user UI elements
+// ---------- UI Elements for User Creation ----------
+// Used by: Create User functionality section (lines ~1050+)
 const newUserName = document.getElementById(
   "newUserName",
-) as HTMLInputElement | null;
+) as HTMLInputElement | null;  // User name input
 const newUserEmail = document.getElementById(
   "newUserEmail",
-) as HTMLInputElement | null;
+) as HTMLInputElement | null;  // User email input
 const btnCreateUser = document.getElementById(
   "btnCreateUser",
-) as HTMLButtonElement | null;
+) as HTMLButtonElement | null;  // Create user button
 const createUserStatus = document.getElementById(
   "createUserStatus",
-) as HTMLElement | null;
+) as HTMLElement | null;  // Status message for user creation
 
-// ---------- Auth & Save UI Elements ----------
+// ---------- UI Elements for Auth & Save ----------
+// Used by: Auth Helpers, Auth Event Handlers, Save Model Handler sections (lines ~970+)
 const loginUser = document.getElementById(
   "loginUser",
-) as HTMLInputElement | null;
+) as HTMLInputElement | null;  // Username input (old UI)
 const loginPass = document.getElementById(
   "loginPass",
-) as HTMLInputElement | null;
+) as HTMLInputElement | null;  // Password input (old UI)
 const btnLogin = document.getElementById(
   "btnLogin",
-) as HTMLButtonElement | null;
+) as HTMLButtonElement | null;  // Login button (old UI)
 const btnLogout = document.getElementById(
   "btnLogout",
-) as HTMLButtonElement | null;
+) as HTMLButtonElement | null;  // Logout button (old UI)
 const btnSaveModel = document.getElementById(
   "btnSaveModel",
-) as HTMLButtonElement | null;
-const authStatus = document.getElementById("authStatus") as HTMLElement | null;
+) as HTMLButtonElement | null;  // Save model to database button
+const authStatus = document.getElementById("authStatus") as HTMLElement | null;  // Auth status display (old UI)
 
-/** Optional UI variant (email-only login + panels) */
-const emailInput = document.getElementById("email") as HTMLInputElement | null;
+// ---------- UI Elements for Email-based Login (new panel UI) ----------
+// Used by: Email-only Login section (lines ~990+)
+const emailInput = document.getElementById("email") as HTMLInputElement | null;  // Email input (new UI)
 const loginBtnEmail = document.getElementById(
   "loginBtn",
-) as HTMLButtonElement | null;
+) as HTMLButtonElement | null;  // Login button (new UI)
 const logoutBtnEmail = document.getElementById(
   "logoutBtn",
-) as HTMLButtonElement | null;
+) as HTMLButtonElement | null;  // Logout button (new UI)
 const loggedOutPanel = document.getElementById(
   "loggedOutPannel",
-) as HTMLElement | null;
+) as HTMLElement | null;  // Panel shown when logged out
 const loggedInPanel = document.getElementById(
   "loggedInPannel",
-) as HTMLElement | null;
-const welcomeMsg = document.getElementById("welcomeMsg") as HTMLElement | null;
+) as HTMLElement | null;  // Panel shown when logged in
+const welcomeMsg = document.getElementById("welcomeMsg") as HTMLElement | null;  // Welcome message display
 
-let lastLoadedFileName: string | null = null;
+let lastLoadedFileName: string | null = null;  // Tracks loaded file name for saving
+
+// ==========================================
+// THREE.JS SCENE SETUP
+// Initializes 3D rendering environment
+// Used by: All visualization sections
+// ==========================================
 
 // ---------- Scene ----------
+// Main container for all 3D objects
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x111111);
 
 // ---------- Camera ----------
+// Orthographic perspective with adjustable view
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
 camera.position.set(2, 2, 4);
 
 // ---------- Renderer ----------
+// WebGL renderer for displaying scene
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 viewer.appendChild(renderer.domElement);
@@ -114,16 +147,19 @@ canvas.style.width = "100%";
 canvas.style.height = "100%";
 
 // ---------- Controls ----------
+// OrbitControls used by: Viewer interaction (camera rotation/zoom)
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
 // ---------- Lights ----------
+// Lighting setup for proper model visualization
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 const dir = new THREE.DirectionalLight(0xffffff, 1);
 dir.position.set(5, 10, 5);
 scene.add(dir);
 
 // ---------- Demo Mesh (until model is loaded) ----------
+// Placeholder geometry shown before user loads a model
 const cube = new THREE.Mesh(
   new THREE.BoxGeometry(1, 1, 1),
   new THREE.MeshStandardMaterial({ color: "orange" }),
@@ -131,66 +167,93 @@ const cube = new THREE.Mesh(
 scene.add(cube);
 
 // ---------- Helpers (toggleable) ----------
+// Grid and axes helpers for orientation reference
+// Used by: Helpers toggleable section (UI controls)
 const gridHelper = new THREE.GridHelper(10, 10);
 const axesHelper = new THREE.AxesHelper(2);
 scene.add(gridHelper);
 scene.add(axesHelper);
 
 // ---------- Current Model ----------
+// Holds the loaded 3D model (replaces cube when loaded)
 let currentModel: THREE.Object3D | null = null;
 
-// ---------- UI Hooks ----------
+// ==========================================
+// UI HOOKS FOR MAIN INTERACTIVE CONTROLS
+// Used by: UI Event Listeners section
+// ==========================================
+
+// ---------- File Input & Status ----------
+// Used by: Loader Logic section
 const fileInput = document.getElementById(
   "fileInput",
-) as HTMLInputElement | null;
-const statusEl = document.getElementById("status") as HTMLDivElement | null;
+) as HTMLInputElement | null;  // Load 3D model file input
+const statusEl = document.getElementById("status") as HTMLDivElement | null;  // Status messages display
 
+// ---------- View Toggle Controls ----------
+// Used by: Helper visibility functions and Event Listeners
 const gridToggle = document.getElementById(
   "gridToggle",
-) as HTMLInputElement | null;
+) as HTMLInputElement | null;  // Toggle grid/axes display
 const modelToggle = document.getElementById(
   "modelToggle",
-) as HTMLInputElement | null;
+) as HTMLInputElement | null;  // Toggle model visibility
 const wireToggle = document.getElementById(
   "wireToggle",
-) as HTMLInputElement | null;
-const scaleSlider = document.getElementById("scale") as HTMLInputElement | null;
+) as HTMLInputElement | null;  // Toggle wireframe mode
+const scaleSlider = document.getElementById("scale") as HTMLInputElement | null;  // Model scale adjustment
 
+// ---------- Camera & Display Controls ----------
+// Used by: Camera and rendering functions
 const resetCamBtn = document.getElementById(
   "resetCam",
-) as HTMLButtonElement | null;
+) as HTMLButtonElement | null;  // Reset camera to default position
 const bgColorPicker = document.getElementById(
   "bgColorPicker",
-) as HTMLInputElement;
+) as HTMLInputElement;  // Background color control
 const modelColorPicker = document.getElementById(
   "modelColorPicker",
-) as HTMLInputElement;
+) as HTMLInputElement;  // Model color control
 
 // ---------- Loaders ----------
-const stlLoader = new STLLoader();
-const objLoader = new OBJLoader();
+// Used by: Loader Logic section for file format support
+const stlLoader = new STLLoader();  // Loads STL format files
+const objLoader = new OBJLoader();  // Loads OBJ format files
+
+// ==========================================
+// HELPER FUNCTIONS
+// Core utilities used throughout application
+// ==========================================
 
 // ---------- Helpers ----------
+// Display status messages to user
 function setStatus(msg: string) {
   if (statusEl) statusEl.textContent = msg;
 }
 
+// Return current model or demo cube
 function getTargetObject(): THREE.Object3D {
   return currentModel ?? cube;
 }
 
+// Apply grid/axes visibility toggle
+// Used by: UI Event Listeners section
 function applyHelperVisibility() {
   const showGrid = gridToggle?.checked ?? true;
   gridHelper.visible = showGrid;
   axesHelper.visible = showGrid;
 }
 
+// Apply model visibility toggle
+// Used by: UI Event Listeners section & Loader Logic
 function applyModelVisibility() {
   const showModel = modelToggle?.checked ?? true;
   if (currentModel) currentModel.visible = showModel;
   cube.visible = !currentModel && showModel;
 }
 
+// Apply scale slider to model
+// Used by: UI Event Listeners section
 function applyScaleFromSlider() {
   const sliderValue = Number(scaleSlider?.value ?? 100);
   const factor = sliderValue / 100;
@@ -198,6 +261,8 @@ function applyScaleFromSlider() {
   target.scale.set(factor, factor, factor);
 }
 
+// Apply wireframe mode to object
+// Used by: Wireframe toggle and Model Color sections
 function setWireframe(object: THREE.Object3D, enabled: boolean) {
   object.traverse((child: any) => {
     if (!child || !child.isMesh) return;
@@ -212,12 +277,16 @@ function setWireframe(object: THREE.Object3D, enabled: boolean) {
   });
 }
 
+// Toggle wireframe display
+// Used by: UI Event Listeners section
 function applyWireframe() {
   const enabled = wireToggle?.checked ?? false;
   const target = getTargetObject();
   setWireframe(target, enabled);
 }
 
+// Clean up current model and release resources
+// Used by: Loader Logic section (onLoaded function)
 function clearCurrentModel() {
   if (currentModel) {
     scene.remove(currentModel);
@@ -234,6 +303,8 @@ function clearCurrentModel() {
   applyWireframe();
 }
 
+// Adjust camera to frame object in view
+// Used by: Loader Logic section (onLoaded function)
 function fitCameraToObject(object: THREE.Object3D, fitOffset = 1.2) {
   const box = new THREE.Box3().setFromObject(object);
   const size = box.getSize(new THREE.Vector3());
@@ -256,12 +327,16 @@ function fitCameraToObject(object: THREE.Object3D, fitOffset = 1.2) {
   controls.update();
 }
 
+// Extract filename from path
+// Used by: collectExternalUris and gltfLoader
 function baseName(pathLike: string): string {
   const cleaned = decodeURIComponent(pathLike).replace(/\\/g, "/");
   const parts = cleaned.split("/");
   return parts[parts.length - 1] || cleaned;
 }
 
+// Collect external file references from glTF JSON
+// Used by: Loader Logic section (gltfFiles loading)
 function collectExternalUris(gltfJson: any): Set<string> {
   const uris = new Set<string>();
   const addUri = (uri?: string) => {
@@ -280,6 +355,8 @@ function collectExternalUris(gltfJson: any): Set<string> {
 // ==========================================
 // Meshmixer Style Logic: Update Budget UI
 // ==========================================
+// Updates UI to reflect current vertex counts
+// Used by: Budget mode toggle and simplification results display
 function updateBudgetInputFromCurrent() {
     if (!currentModel) return;
     let totalVerts = 0;
@@ -306,6 +383,9 @@ function updateBudgetInputFromCurrent() {
 // ==========================================
 // Loader Logic
 // ==========================================
+// Handles file loading and model initialization
+// Formats supported: GLB, GLTF, STL, OBJ
+// Called by: fileInput change event listener
 async function loadSelection(files: FileList) {
     const selected = Array.from(files);
     if (selected.length === 0) return;
@@ -494,34 +574,46 @@ async function loadSelection(files: FileList) {
   }
 }
 
-// ---------- UI Event Listeners ----------
+// ==========================================
+// UI Event Listeners
+// Attaches interactive handlers to controls
+// ==========================================
 
+// File loader event
 fileInput?.addEventListener("change", (e) => {
   const input = e.target as HTMLInputElement;
   if (input.files && input.files.length > 0) loadSelection(input.files);
   input.value = "";
 });
 
+// Helper visibility controls
 gridToggle?.addEventListener("change", applyHelperVisibility);
 modelToggle?.addEventListener("change", applyModelVisibility);
 wireToggle?.addEventListener("change", applyWireframe);
+
+// Scale slider adjusts model size
 scaleSlider?.addEventListener("input", () => {
   applyScaleFromSlider();
   applyWireframe();
 });
+
+// Reset camera button
 resetCamBtn?.addEventListener("click", () => {
   camera.position.set(2, 2, 4);
   controls.target.set(0, 0, 0);
   controls.update();
 });
 
-// 1. Background Color
+// 1. Background Color Picker
 if (bgColorPicker) {
   bgColorPicker.addEventListener("input", (e) => {
     scene.background = new THREE.Color((e.target as HTMLInputElement).value);
   });
 }
 
+// Density Visualization: Click on model to visualize face density
+// Calculates surface area density at each vertex using face information
+// Used by: Viewer canvas click event
 viewer.addEventListener("click", () => {
     let mesh = getMesh(currentModel);
     if (mesh) {
@@ -606,6 +698,8 @@ viewer.addEventListener("click", () => {
     }
 });
 
+// Utility: Recursively finds first mesh in object hierarchy
+// Used by: Density visualization and other mesh operations
 function getMesh(object: THREE.Object3D | null): THREE.Mesh | null{
     if(object?.type == "Mesh"){
         return object as THREE.Mesh;
@@ -631,7 +725,9 @@ function getMesh(object: THREE.Object3D | null): THREE.Mesh | null{
     return null;
 }
 
-// 2. Model Color
+// 2. Model Color Picker
+// Changes material color of all meshes in current model
+// Used by: Material color control
 if (modelColorPicker) {
   modelColorPicker.addEventListener("input", (e) => {
     if (!currentModel) return;
@@ -656,15 +752,29 @@ if (modelColorPicker) {
 // ==========================================
 // Meshmixer Style: Reduce Logic
 // ==========================================
+// Provides mesh simplification using SimplifyModifier from Three.js
+// 
+// SimplifyModifier Reference:
+//  - Import: 'three/examples/jsm/modifiers/SimplifyModifier.js' (line 6)
+//  - Instance: const modifier = new SimplifyModifier(); (line 45)
+//  - Purpose: Reduces vertex count while preserving geometry shape
+//  - Method: modifier.modify(geometry, targetVertexCount)
+//  - Usage: Supports both percentage-based and budget-based reduction modes
+//
+// Two reduction modes:
+//  1. Percentage Mode: Reduce by percentage (0-100%)
+//  2. Budget Mode: Target a specific vertex count
 
 // 3. Toggle Mode (Percentage vs Budget)
 if (reduceTargetSelect) {
   reduceTargetSelect.addEventListener("change", () => {
     const mode = reduceTargetSelect.value;
     if (mode === "percentage") {
+      // Show percentage controls
       if (controlPercent) controlPercent.style.display = "block";
       if (controlBudget) controlBudget.style.display = "none";
     } else {
+      // Show budget controls and update with current vertex count
       if (controlPercent) controlPercent.style.display = "none";
       if (controlBudget) controlBudget.style.display = "block";
       // Update input with current vertex count
@@ -674,6 +784,9 @@ if (reduceTargetSelect) {
 }
 
 function performSimplification(targetType: "ratio" | "count", value: number) {
+  // SimplifyModifier.modify(geometry, targetVertexCount) reduces vertex count
+  // This function orchestrates the simplification process across all meshes
+  
   if (!currentModel) return;
 
   setStatus("Computing simplification...");
@@ -685,6 +798,7 @@ function performSimplification(targetType: "ratio" | "count", value: number) {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
 
+        // Store original geometry for reference
         if (!mesh.userData.originalGeometry) {
           mesh.userData.originalGeometry = mesh.geometry.clone();
         }
@@ -693,9 +807,12 @@ function performSimplification(targetType: "ratio" | "count", value: number) {
 
         let targetCount = 0;
 
+        // Calculate target vertex count based on mode
         if (targetType === "ratio") {
+          // Percentage mode: convert slider value (0-1) to vertex reduction
           targetCount = Math.floor(origCount * (1 - value));
         } else {
+          // Budget mode: target specific vertex count across all meshes
           const globalOrig = parseInt(originalCountLabel?.textContent || "1");
           let removeRatio = value / globalOrig;
 
@@ -711,10 +828,12 @@ function performSimplification(targetType: "ratio" | "count", value: number) {
         const percentageMin = Math.floor(origCount * 0.3);
         const minLimit = Math.max(absoluteMin, percentageMin);
 
+        // Ensure minimum vertex count for stability
         if (targetCount < minLimit) {
           targetCount = minLimit;
         }
 
+        // Skip simplification if target is too close to original
         if (targetCount >= origCount * 0.99) {
           mesh.geometry.dispose();
           mesh.geometry = originalGeo.clone();
@@ -723,6 +842,8 @@ function performSimplification(targetType: "ratio" | "count", value: number) {
         }
 
         try {
+          // SimplifyModifier.modify(geometry, targetCount)
+          // Performs vertex reduction while maintaining shape fidelity
           const simplified = modifier.modify(originalGeo.clone(), targetCount);
 
           mesh.geometry.dispose();
@@ -730,6 +851,7 @@ function performSimplification(targetType: "ratio" | "count", value: number) {
           currentTotalVerts += simplified.attributes.position.count;
         } catch (e) {
           console.error("Simplify failed", e);
+          // Fallback to original if simplification fails
           mesh.geometry.dispose();
           mesh.geometry = originalGeo.clone();
           currentTotalVerts += origCount;
@@ -737,6 +859,7 @@ function performSimplification(targetType: "ratio" | "count", value: number) {
       }
     });
 
+    // Update UI with new vertex count
     if (polyCountLabel)
       polyCountLabel.textContent = `Current Vertices: ${currentTotalVerts}`;
 
@@ -744,9 +867,10 @@ function performSimplification(targetType: "ratio" | "count", value: number) {
   }, 50);
 }
 
-// 5. Slider Events
+// 5. Slider Events - Percentage-based reduction with SimplifyModifier
 if (meshSlider) {
   meshSlider.addEventListener("input", () => {
+    // Shows live feedback while dragging
     if (meshValue) {
       meshValue.textContent = `${meshSlider.value}% (Release)`;
       meshValue.style.color = "#ffff00";
@@ -754,17 +878,19 @@ if (meshSlider) {
   });
 
   meshSlider.addEventListener("change", () => {
+    // On release, triggers simplification with percentage-based reduction
+    // SimplifyModifier.modify() is called in performSimplification()
     const percent = parseInt(meshSlider.value);
     if (meshValue) {
       meshValue.textContent = `${percent}%`;
       meshValue.style.color = "#ff9800";
     }
-    // Convert 0-100 to 0.0-1.0
+    // Convert 0-100 slider to 0.0-1.0 ratio for SimplifyModifier
     performSimplification("ratio", percent / 100);
   });
 }
 
-// 6. Budget Apply Button
+// 6. Budget Apply Button - Target vertex count with SimplifyModifier
 if (btnApplyBudget && budgetInput) {
   btnApplyBudget.addEventListener("click", () => {
     const budget = parseInt(budgetInput.value);
@@ -772,18 +898,28 @@ if (btnApplyBudget && budgetInput) {
       alert("Please enter a valid vertex count");
       return;
     }
+    // Triggers simplification with budget-based reduction
+    // SimplifyModifier.modify(geometry, budget) targets specific vertex count
     performSimplification("count", budget);
   });
 }
 // ==========================================
 // Checkpoint System 
 // ==========================================
-
+// Allows users to save, restore, and visualize geometry checkpoints
+// Useful for: Comparing before/after simplification, iterative editing
+// Related to: Reduce Logic section (mesh modifications)
+// Features:
+//  - Save current mesh geometry state
+//  - Restore to previous geometry state
+//  - Toggle overlay visualization of checkpoint vs current
 
 // make sure all buttons exist before adding event listeners
 if (btnSaveCheckpoint && btnRestoreCheckpoint && btnToggleCheckpoint) {
     
     // --- (Save) ---
+    // Captures current geometry and saves it for later comparison/restoration
+    // Triggered by: btnSaveCheckpoint click
     btnSaveCheckpoint.addEventListener('click', () => {
         if (!currentModel) return;
         
@@ -1120,7 +1256,14 @@ if (btnExportGLB) {
 if (btnExportOBJ) {
     btnExportOBJ.addEventListener('click', () => exportCorrectedModel('obj'));
 }
-// ---------- Resize & Animate ----------
+
+// ==========================================
+// Resize & Animate Loop
+// ==========================================
+// Maintains responsive canvas and animation frame
+// Used by: Main render loop
+
+// Handle window resize and canvas scaling
 function resizeToViewer() {
   const w = viewer.clientWidth;
   const h = viewer.clientHeight;
@@ -1128,10 +1271,13 @@ function resizeToViewer() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
+
+// Listen for window and container resize events
 window.addEventListener("resize", resizeToViewer);
 new ResizeObserver(resizeToViewer).observe(viewer);
 resizeToViewer();
 
+// Main animation loop - renders scene continuously
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
@@ -1139,11 +1285,21 @@ function animate() {
 }
 animate();
 
+// ==========================================
+// Authentication System
+// ==========================================
+// Manages user login/logout and session tokens
+// Supports two UI variants: old (username/password) and new (email-based)
+// Related sections: Auth Event Handlers, Save Model Handler, Email-only Login
+
 // ---------- Auth Helpers ----------
+// Retrieve auth token from localStorage
 function getAuthToken(): string | null {
   return localStorage.getItem("authToken");
 }
 
+// Store/clear auth token and session user
+// Updates UI after token change
 function setAuthToken(token: string | null, username?: string | null) {
   if (token) {
     localStorage.setItem("authToken", token);
@@ -1155,10 +1311,14 @@ function setAuthToken(token: string | null, username?: string | null) {
   updateAuthUI();
 }
 
+// Retrieve logged-in user from localStorage
 function getAuthUser(): string | null {
   return localStorage.getItem("authUser");
 }
 
+// Update UI to reflect auth state
+// Shows/hides panels and buttons based on login status
+// Used by: setAuthToken, initial load, all auth event handlers
 function updateAuthUI() {
   const token = getAuthToken();
   const user = getAuthUser();
@@ -1181,6 +1341,8 @@ function updateAuthUI() {
   updateSaveButtonState();
 }
 
+// Enable save button only if logged in and model loaded
+// Used by: updateAuthUI, onLoaded (Loader Logic)
 function updateSaveButtonState() {
   if (!btnSaveModel) return;
   const hasToken = !!getAuthToken();
@@ -1188,7 +1350,13 @@ function updateSaveButtonState() {
   btnSaveModel.disabled = !(hasToken && !!lastLoadedFileName);
 }
 
-// ---------- Auth Event Handlers ----------
+// ==========================================
+// Auth Event Handlers (Old UI - Username/Password)
+// ==========================================
+// Traditional login handler using username and password
+// API Endpoint: POST /api/login
+// Related to: Auth Helpers, updateAuthUI
+
 if (btnLogin) {
   btnLogin.addEventListener("click", async () => {
     const user = loginUser?.value ?? "";
@@ -1218,7 +1386,14 @@ if (btnLogin) {
   });
 }
 
-// ---------- Email-only Login (panel UI) ----------
+// ==========================================
+// Email-only Login (New Panel UI)
+// ==========================================
+// Alternative login using email address only
+// Checks if user exists in database and logs in
+// API Endpoint: GET /api/users/exists?email=...
+// Related to: Auth Helpers, updateAuthUI
+
 // this will log in by checking the users table.
 if (loginBtnEmail) {
   loginBtnEmail.addEventListener("click", async (e) => {
@@ -1252,6 +1427,7 @@ if (loginBtnEmail) {
   });
 }
 
+// Logout handlers for both UI variants
 if (logoutBtnEmail) {
   logoutBtnEmail.addEventListener("click", (e) => {
     e.preventDefault();
@@ -1267,7 +1443,15 @@ if (btnLogout) {
   });
 }
 
-// ---------- Save Model Handler ----------
+// ==========================================
+// Save Model Handler
+// ==========================================
+// Saves current model metadata to database
+// Collects: model name, timestamp, vertex count
+// API Endpoint: POST /api/projects
+// Requires: Authentication token, loaded model
+// Related to: Auth Helpers, Loader Logic (lastLoadedFileName)
+
 if (btnSaveModel) {
   btnSaveModel.addEventListener("click", async () => {
     if (!lastLoadedFileName) {
@@ -1322,7 +1506,14 @@ if (btnSaveModel) {
   });
 }
 
-// Create User functionality
+// ==========================================
+// Create User Functionality
+// ==========================================
+// Allows registration of new users in database
+// API Endpoint: POST /api/users
+// Returns: 201 on success, 409 if email exists
+// Related to: Auth System
+
 if (btnCreateUser) {
   btnCreateUser.addEventListener("click", async () => {
     const name = newUserName?.value?.trim();
@@ -1364,10 +1555,13 @@ if (btnCreateUser) {
 // ==========================================
 // Boundary Conditions Visualization 
 // ==========================================
+// Displays support points and load directions for stress analysis
+// Used by: Von Mises Stress visualization workflow
+// Related to: Von Mises Stress Visualization section
 
 const btnSettings = document.getElementById('btn-settings');
 
-let boundaryHelpers: THREE.Object3D[] = [];
+let boundaryHelpers: THREE.Object3D[] = [];  // Stores visual helpers for cleanup
 
 if (btnSettings) {
     btnSettings.addEventListener('click', () => {
@@ -1418,7 +1612,13 @@ if (btnSettings) {
 // Initialize UI from stored state
 updateAuthUI();
 
-// ------------ DataBase Functionality ------------
+// ==========================================
+// Database Functionality
+// ==========================================
+// Exports projects to database or diagnostic output
+// Used by: Export button (DbButton)
+// Related to: Save Model Handler section
+
 exportBtn?.addEventListener("click", async () => {
   try {
     const res = await fetch("/api/projects");
