@@ -56,9 +56,9 @@
             </label>
             <div id="status" class="status-text">No file loaded</div>
           </div>
-        
+
           <!-- Auth (email check) -->
-          <div class="control-group" style="margin-top: 14px;">
+          <div class="control-group" style="margin-top: 14px">
             <div id="loggedOutPannel">
               <a
                 id="createUserLink"
@@ -70,7 +70,7 @@
                 Create Account
               </a>
 
-              <div class="form-group" style="margin-top: 10px;">
+              <div class="form-group" style="margin-top: 10px">
                 <label for="email">Email</label>
                 <input
                   type="email"
@@ -81,32 +81,38 @@
                 />
               </div>
 
-              <button id="loginBtn" class="btn-tool" style="margin-top: 10px;">
+              <button id="loginBtn" class="btn-tool" style="margin-top: 10px">
                 Login
               </button>
             </div>
-        
-        
+
             <label class="label-title">Export </label>
-            <div style="display: flex; gap: 5px;">
-                <button id="btnExportGLB" class="btn-tool" style="flex: 1; background-color: #007acc;">
-                    <i class="fa-solid fa-download"></i> .GLB
-                </button>
-                <button id="btnExportOBJ" class="btn-tool" style="flex: 1; background-color: #007acc;">
-                    <i class="fa-solid fa-download"></i> .OBJ
-                </button>
+            <div style="display: flex; gap: 5px">
+              <button
+                id="btnExportGLB"
+                class="btn-tool"
+                style="flex: 1; background-color: #007acc"
+              >
+                <i class="fa-solid fa-download"></i> .GLB
+              </button>
+              <button
+                id="btnExportOBJ"
+                class="btn-tool"
+                style="flex: 1; background-color: #007acc"
+              >
+                <i class="fa-solid fa-download"></i> .OBJ
+              </button>
             </div>
 
-            <div id="loggedInPannel" style="display: none; margin-top: 10px;">
+            <div id="loggedInPannel" style="display: none; margin-top: 10px">
               <div class="control-group">
                 <span id="welcomeMsg">Welcome!</span>
               </div>
-              <button id="logoutBtn" class="btn-tool" style="margin-top: 10px;">
+              <button id="logoutBtn" class="btn-tool" style="margin-top: 10px">
                 Logout
               </button>
             </div>
           </div>
-
         </div>
 
         <div id="panel-edit" class="tool-group">
@@ -121,7 +127,6 @@
           <div class="control-group">
             <label class="label-title">Reduce</label>
 
-            
             <div style="margin-bottom: 10px">
               <span style="font-size: 12px; color: #aaa">Reduce Type</span>
               <select
@@ -137,6 +142,21 @@
                 <option value="preserve">Shape Preserving</option>
               </select>
             </div>
+<!--            <div style="margin-bottom: 10px">-->
+<!--              <span style="font-size: 12px; color: #aaa">Reduce Type</span>-->
+<!--              <select-->
+<!--                id="reduceType"-->
+<!--                style="-->
+<!--                  width: 100%;-->
+<!--                  background: #333;-->
+<!--                  color: white;-->
+<!--                  border: 1px solid #555;-->
+<!--                  padding: 5px;-->
+<!--                "-->
+<!--              >-->
+<!--                <option value="preserve">Shape Preserving</option>-->
+<!--              </select>-->
+<!--            </div>-->
 
             <div style="margin-bottom: 10px">
               <span style="font-size: 12px; color: #aaa">Reduce Target</span>
@@ -232,23 +252,41 @@
             </div>
 
             <label class="label-title">Checkpoint </label>
-            <div style="display: flex; gap: 5px;">
-                <button id="btnSaveCheckpoint" class="btn-tool" style="flex: 1;">
-                    <i class="fa-solid fa-floppy-disk"></i> Save
-                </button>
-                <button id="btnRestoreCheckpoint" class="btn-tool" style="flex: 1;" disabled>
-                    <i class="fa-solid fa-rotate-left"></i> Restore
-                </button>
-            </div>
-            
-            <button id="btnToggleCheckpoint" class="btn-tool" style="margin-top: 5px;" disabled>
-                <i class=""></i> Show/Hide Overlay
-            </button>
-            
-            <div id="checkpointStatus" style="font-size: 11px; color: #666; margin-top: 5px; text-align: center;">
-                No checkpoint saved
+            <div style="display: flex; gap: 5px">
+              <!-- <button id="btnSaveCheckpoint" class="btn-tool" style="flex: 1"> -->
+              <button id="btnSaveModel" class="btn-tool" style="flex: 1">
+                <i class="fa-solid fa-floppy-disk"></i> Save
+              </button>
+              <button
+                id="btnRestoreCheckpoint"
+                class="btn-tool"
+                style="flex: 1"
+                disabled
+              >
+                <i class="fa-solid fa-rotate-left"></i> Restore
+              </button>
             </div>
 
+            <button
+              id="btnToggleCheckpoint"
+              class="btn-tool"
+              style="margin-top: 5px"
+              disabled
+            >
+              <i class=""></i> Show/Hide Overlay
+            </button>
+
+            <div
+              id="checkpointStatus"
+              style="
+                font-size: 11px;
+                color: #666;
+                margin-top: 5px;
+                text-align: center;
+              "
+            >
+              No checkpoint saved
+            </div>
           </div>
         </div>
 
@@ -288,19 +326,27 @@
         </div>
 
         <div id="panel-analysis" class="tool-group">
-             <div class="control-group">
-                <button id="btn-simulation" class="btn-tool">Simulate Deformation</button>
-                <button id="btn-settings" class="btn-tool">Constraints Settings</button>
-             </div>
-             <div class="control-group">
-                <label class="label-title">Simulation </label>
-                <button id="btnStressAnalysis" class="btn-tool" title="Simulate Von Mises Stress">
-                    <i class=""></i> Show Von Mises Stress
-                </button>
-                <div style="font-size: 10px; color: #888; margin-top: 5px;">
-                    * Red indicates high simulated stress
-                </div>
+          <div class="control-group">
+            <button id="btn-simulation" class="btn-tool">
+              Simulate Deformation
+            </button>
+            <button id="btn-settings" class="btn-tool">
+              Constraints Settings
+            </button>
+          </div>
+          <div class="control-group">
+            <label class="label-title">Simulation </label>
+            <button
+              id="btnStressAnalysis"
+              class="btn-tool"
+              title="Simulate Von Mises Stress"
+            >
+              <i class=""></i> Show Von Mises Stress
+            </button>
+            <div style="font-size: 10px; color: #888; margin-top: 5px">
+              * Red indicates high simulated stress
             </div>
+          </div>
         </div>
       </aside>
 
@@ -346,7 +392,6 @@
       }
     </script>
 
-    <script type="module" src="/app.ts"></script>
+    <script type="module" src="/main.ts"></script>
   </body>
 </html>
-
