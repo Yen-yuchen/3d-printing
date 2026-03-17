@@ -29,21 +29,38 @@ export class ModelLoaderService {
   private readonly stlLoader = new STLLoader();
   private readonly objLoader = new OBJLoader();
 
+  private readonly state: ViewerState;
+  private readonly sceneManager: SceneManager;
+  private readonly elements: AppElements;
+  private readonly callbacks: ModelLoaderCallbacks = {};
   constructor(
-    private readonly state: ViewerState,
-    private readonly sceneManager: SceneManager,
-    private readonly elements: AppElements,
-    private readonly callbacks: ModelLoaderCallbacks = {},
-  ) {}
+    state: ViewerState,
+    sceneManager: SceneManager,
+    elements: AppElements,
+    callbacks: ModelLoaderCallbacks = {},
+  ) {
+    this.state = state;
+    this.sceneManager = sceneManager;
+    this.elements = elements;
+    this.callbacks = callbacks;
+  }
 
   public async loadSelection(files: FileList): Promise<void> {
     const selected = Array.from(files);
     if (selected.length === 0) return;
 
-    const gltfFiles = selected.filter((file) => file.name.toLowerCase().endsWith(".gltf"));
-    const glbFiles = selected.filter((file) => file.name.toLowerCase().endsWith(".glb"));
-    const stlFiles = selected.filter((file) => file.name.toLowerCase().endsWith(".stl"));
-    const objFiles = selected.filter((file) => file.name.toLowerCase().endsWith(".obj"));
+    const gltfFiles = selected.filter((file) =>
+      file.name.toLowerCase().endsWith(".gltf"),
+    );
+    const glbFiles = selected.filter((file) =>
+      file.name.toLowerCase().endsWith(".glb"),
+    );
+    const stlFiles = selected.filter((file) =>
+      file.name.toLowerCase().endsWith(".stl"),
+    );
+    const objFiles = selected.filter((file) =>
+      file.name.toLowerCase().endsWith(".obj"),
+    );
 
     if (gltfFiles.length > 0) {
       await this.loadGltfPackage(selected, gltfFiles);
@@ -52,7 +69,10 @@ export class ModelLoaderService {
 
     const mainSingle = glbFiles[0] ?? stlFiles[0] ?? objFiles[0];
     if (!mainSingle || selected.length !== 1) {
-      setStatus(this.elements.statusEl, "Unsupported or multiple single files selected.");
+      setStatus(
+        this.elements.statusEl,
+        "Unsupported or multiple single files selected.",
+      );
       return;
     }
 
@@ -64,6 +84,7 @@ export class ModelLoaderService {
     this.state.currentModel = object;
     this.state.lastLoadedFile = file;
     this.state.lastLoadedFileName = file.name;
+    this.state.currentModelId = null;
 
     mergeModelVertices(object);
     this.sceneManager.scene.add(object);
@@ -74,10 +95,15 @@ export class ModelLoaderService {
     applyScaleFromSlider(this.state, this.sceneManager, this.elements);
     applyWireframe(this.state, this.sceneManager, this.elements);
 
-    const selectedColor = this.elements.modelColorPicker?.value ?? DEFAULT_MODEL_COLOR;
+    const selectedColor =
+      this.elements.modelColorPicker?.value ?? DEFAULT_MODEL_COLOR;
     applyModelColor(this.state, selectedColor);
 
-    fitCameraToObject(this.sceneManager.camera, this.sceneManager.controls, object);
+    fitCameraToObject(
+      this.sceneManager.camera,
+      this.sceneManager.controls,
+      object,
+    );
     setStatus(this.elements.statusEl, `Loaded: ${file.name}`);
 
     if (this.elements.meshSlider) {
@@ -88,7 +114,10 @@ export class ModelLoaderService {
     this.callbacks.onModelLoaded?.();
   }
 
-  private async loadGltfPackage(selected: File[], gltfFiles: File[]): Promise<void> {
+  private async loadGltfPackage(
+    selected: File[],
+    gltfFiles: File[],
+  ): Promise<void> {
     if (gltfFiles.length !== 1) {
       setStatus(this.elements.statusEl, "Select exactly one .gltf + deps.");
       return;
@@ -107,7 +136,9 @@ export class ModelLoaderService {
 
     const required = collectExternalUris(gltfJson);
     const allowed = new Set<string>([gltfFile.name, ...required]);
-    const extra = selected.map((file) => file.name).filter((name) => !allowed.has(name));
+    const extra = selected
+      .map((file) => file.name)
+      .filter((name) => !allowed.has(name));
     if (extra.length > 0) {
       setStatus(this.elements.statusEl, `Unrelated files: ${extra.join(", ")}`);
       return;
@@ -130,7 +161,9 @@ export class ModelLoaderService {
     }
 
     const manager = new THREE.LoadingManager();
-    manager.setURLModifier((url) => fileMap.get(url.split("/").pop() ?? url) ?? url);
+    manager.setURLModifier(
+      (url) => fileMap.get(url.split("/").pop() ?? url) ?? url,
+    );
     const gltfLoader = new GLTFLoader(manager);
 
     await new Promise<void>((resolve) => {
@@ -185,7 +218,8 @@ export class ModelLoaderService {
           url,
           (geometry) => {
             const material = new THREE.MeshStandardMaterial({
-              color: this.elements.modelColorPicker?.value ?? DEFAULT_MODEL_COLOR,
+              color:
+                this.elements.modelColorPicker?.value ?? DEFAULT_MODEL_COLOR,
               roughness: 0.8,
               metalness: 0,
             });
@@ -207,7 +241,8 @@ export class ModelLoaderService {
           url,
           (object) => {
             const material = new THREE.MeshStandardMaterial({
-              color: this.elements.modelColorPicker?.value ?? DEFAULT_MODEL_COLOR,
+              color:
+                this.elements.modelColorPicker?.value ?? DEFAULT_MODEL_COLOR,
               roughness: 0.8,
               metalness: 0,
             });

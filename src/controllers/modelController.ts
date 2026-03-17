@@ -7,12 +7,21 @@ import { fetchProjects } from "../services/projectService";
 import { setStatus } from "../views/statusView";
 
 export class ModelController {
+  private readonly viewerState: ViewerState;
+  private readonly elements: AppElements;
+  private readonly authController: AuthController;
+  private readonly loader: ModelLoaderService;
   constructor(
-    private readonly viewerState: ViewerState,
-    private readonly elements: AppElements,
-    private readonly authController: AuthController,
-    private readonly loader: ModelLoaderService,
-  ) {}
+    viewerState: ViewerState,
+    elements: AppElements,
+    authController: AuthController,
+    loader: ModelLoaderService,
+  ) {
+    this.viewerState = viewerState;
+    this.elements = elements;
+    this.authController = authController;
+    this.loader = loader;
+  }
 
   public init(): void {
     this.elements.fileInput?.addEventListener("change", async (event) => {
@@ -25,7 +34,10 @@ export class ModelController {
     });
 
     this.elements.btnSaveModel?.addEventListener("click", async () => {
-      if (!this.viewerState.lastLoadedFile || !this.viewerState.lastLoadedFileName) {
+      if (
+        !this.viewerState.lastLoadedFile ||
+        !this.viewerState.lastLoadedFileName
+      ) {
         alert("No model file loaded to save");
         return;
       }

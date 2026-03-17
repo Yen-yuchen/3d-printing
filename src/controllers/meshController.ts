@@ -3,7 +3,10 @@ import type { AppElements } from "../utils/dom";
 import type { SceneManager } from "../three/sceneManager";
 import { CheckpointManager } from "../three/checkpointManager";
 import { applySimulatedVonMises } from "../three/stressAnalysis";
-import { performSimplification, updateBudgetInputFromCurrent } from "../three/meshOperations";
+import {
+  performSimplification,
+  updateBudgetInputFromCurrent,
+} from "../three/meshOperations";
 import {
   renderCheckpointSaved,
   renderCheckpointToggle,
@@ -16,12 +19,21 @@ import {
 import { setStatus } from "../views/statusView";
 
 export class MeshController {
+  private readonly viewerState: ViewerState;
+  private readonly elements: AppElements;
+  private readonly sceneManager: SceneManager;
+  private readonly checkpointManager: CheckpointManager;
   constructor(
-    private readonly viewerState: ViewerState,
-    private readonly elements: AppElements,
-    private readonly sceneManager: SceneManager,
-    private readonly checkpointManager: CheckpointManager,
-  ) {}
+    viewerState: ViewerState,
+    elements: AppElements,
+    sceneManager: SceneManager,
+    checkpointManager: CheckpointManager,
+  ) {
+    this.viewerState = viewerState;
+    this.elements = elements;
+    this.sceneManager = sceneManager;
+    this.checkpointManager = checkpointManager;
+  }
 
   public init(): void {
     syncReduceTargetMode(this.elements);
@@ -34,13 +46,21 @@ export class MeshController {
     });
 
     this.elements.meshSlider?.addEventListener("input", () => {
-      renderMeshSliderLive(this.elements, parseInt(this.elements.meshSlider!.value, 10));
+      renderMeshSliderLive(
+        this.elements,
+        parseInt(this.elements.meshSlider!.value, 10),
+      );
     });
 
     this.elements.meshSlider?.addEventListener("change", () => {
       const percent = parseInt(this.elements.meshSlider!.value, 10);
       renderMeshSliderCommitted(this.elements, percent);
-      performSimplification(this.viewerState, this.elements, "ratio", percent / 100);
+      performSimplification(
+        this.viewerState,
+        this.elements,
+        "ratio",
+        percent / 100,
+      );
     });
 
     this.elements.btnApplyBudget?.addEventListener("click", () => {
@@ -73,9 +93,15 @@ export class MeshController {
 
     this.elements.btnStressAnalysis?.addEventListener("click", () => {
       if (!this.viewerState.currentModel) return;
-      setStatus(this.elements.statusEl, "Computing Von Mises Stress (Simulated)...");
+      setStatus(
+        this.elements.statusEl,
+        "Computing Von Mises Stress (Simulated)...",
+      );
       applySimulatedVonMises(this.viewerState);
-      setStatus(this.elements.statusEl, "Von Mises Analysis Complete: Red = High Stress");
+      setStatus(
+        this.elements.statusEl,
+        "Von Mises Analysis Complete: Red = High Stress",
+      );
     });
   }
 }

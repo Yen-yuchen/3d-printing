@@ -12,11 +12,18 @@ import {
 import { createUser } from "../services/userService";
 
 export class AuthController {
+  private readonly authState: AuthState;
+  private readonly viewerState: ViewerState;
+  private readonly elements: AppElements;
   constructor(
-    private readonly authState: AuthState,
-    private readonly viewerState: ViewerState,
-    private readonly elements: AppElements,
-  ) {}
+    authState: AuthState,
+    viewerState: ViewerState,
+    elements: AppElements,
+  ) {
+    this.authState = authState;
+    this.viewerState = viewerState;
+    this.elements = elements;
+  }
 
   public init(): void {
     const stored = readStoredAuth();
@@ -49,12 +56,12 @@ export class AuthController {
         return;
       }
       try {
-        const exists = await loginByKnownEmail(email);
-        if (!exists) {
+        const response = await loginByKnownEmail(email);
+        if (!response?.token) {
           alert("No user found with that email");
           return;
         }
-        this.setAuth(`devemail-${Date.now()}`, email);
+        this.setAuth(response.token, response.user?.email ?? email);
         setStatus(this.elements.statusEl, "Login successful");
       } catch (error) {
         console.error("Email login error", error);
@@ -78,7 +85,8 @@ export class AuthController {
       const email = this.elements.newUserEmail?.value?.trim();
       if (!name || !email) {
         if (this.elements.createUserStatus) {
-          this.elements.createUserStatus.textContent = "Name and email required";
+          this.elements.createUserStatus.textContent =
+            "Name and email required";
         }
         return;
       }

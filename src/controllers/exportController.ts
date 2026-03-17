@@ -4,10 +4,12 @@ import { exportCorrectedModel } from "../three/modelExporter";
 import { setStatus } from "../views/statusView";
 
 export class ExportController {
-  constructor(
-    private readonly viewerState: ViewerState,
-    private readonly elements: AppElements,
-  ) {}
+  private readonly viewerState: ViewerState;
+  private readonly elements: AppElements;
+  constructor(viewerState: ViewerState, elements: AppElements) {
+    this.viewerState = viewerState;
+    this.elements = elements;
+  }
 
   public init(): void {
     this.elements.btnExportGLB?.addEventListener("click", () => {
