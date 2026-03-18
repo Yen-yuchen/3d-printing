@@ -87,6 +87,10 @@
             </div>
 
             <label class="label-title">Export </label>
+	    <div style="gap: 10px">
+	    <input type="text" id="newModelName" placeholder="Enter model's new name">
+	    </input>
+	    </div>
             <div style="display: flex; gap: 5px">
               <button
                 id="btnExportGLB"
@@ -102,6 +106,11 @@
               >
                 <i class="fa-solid fa-download"></i> .OBJ
               </button>
+	      <button id="btnLocalSave"
+		      class="btn-tool"
+		      style="flex: 1; background-color: #007acc">
+		      <label><i class="fa-solid fa-download"></i> Local Save</label>
+		</button>
             </div>
 
             <div id="loggedInPannel" style="display: none; margin-top: 10px">

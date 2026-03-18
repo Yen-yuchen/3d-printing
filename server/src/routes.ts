@@ -16,6 +16,7 @@ fs.mkdirSync(STORAGE_DIR, { recursive: true });
 
 // multer saves uploaded files to STORAGE_DIR with random filenames
 const upload: any = multer({ dest: STORAGE_DIR });
+const memoryUpload: any = multer({ storage: multer.memoryStorage() });
 
 // ---------- Auth middleware (typed as any to avoid TS2769) ----------
 const requireAuth: any = (req: any, res: any, next: any) => {
@@ -352,5 +353,44 @@ api.delete("/models/:modelId", requireAuth, async (req: any, res: any) => {
   } catch (err) {
     console.error("Failed to delete model", err);
     return res.status(500).json({ error: "server error" });
+  }
+});
+
+// save localy
+api.post("/save-model", memoryUpload.single("model"), (req: any, res: any) => {
+  try {
+    const userId = String(req.body.userId || "local-user");
+    const projectId = String(req.body.projectId || "default-project");
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const safeUserId = userId.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const safeProjectId = projectId.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const safeFileName = String(req.file.originalname || "model.glb").replace(
+      /[^a-zA-Z0-9._-]/g,
+      "_",
+    );
+
+    const saveDir = path.join(
+      process.cwd(),
+      "storage",
+      safeUserId,
+      safeProjectId,
+    );
+
+    fs.mkdirSync(saveDir, { recursive: true });
+
+    const filePath = path.join(saveDir, safeFileName);
+    fs.writeFileSync(filePath, req.file.buffer);
+
+    return res.json({
+      message: "File saved successfully",
+      filePath,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Failed to save file" });
   }
 });
