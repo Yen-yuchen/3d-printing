@@ -193,3 +193,33 @@ input[type=range] {
     background-color: #111; 
     position: relative;
 }
+
+#panel-edit {
+    max-height: 80vh; 
+    
+    
+    overflow-y: auto; 
+    
+    overflow-x: hidden; 
+}
+#panel-edit::-webkit-scrollbar {
+    width: 6px; 
+}
+
+#panel-edit::-webkit-scrollbar-track {
+    background: transparent; 
+}
+
+#panel-edit::-webkit-scrollbar-thumb {
+    background: #888; 
+    border-radius: 10px; 
+}
+
+#panel-edit::-webkit-scrollbar-thumb:hover {
+    background: #555; 
+}
+#panel-edit input[type="range"] {
+    display: block;
+    margin-left: auto; 
+    margin-right: 0;   
+}
