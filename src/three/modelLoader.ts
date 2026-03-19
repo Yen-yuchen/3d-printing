@@ -1,3 +1,14 @@
+/**
+ * Service responsible for loading 3D model files into the viewer.
+ *
+ * Supports: .gltf, .glb, .stl, .obj
+ *
+ * Responsibilities:
+ *  - Parse file blobs and create Three.js objects
+ *  - Clear prior model and add new model to scene
+ *  - Apply default materials / visibility / scale settings
+ *  - Update UI status and vertex count indicators
+ */
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";

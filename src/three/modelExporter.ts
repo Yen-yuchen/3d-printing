@@ -4,6 +4,16 @@ import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter.js";
 import type { ViewerState } from "../state/viewerState";
 import { downloadFile } from "../utils/fileUtils";
 
+/**
+ * Export the current model to GLB or OBJ format.
+ *
+ * This function clones the current model, bakes world transforms into
+ * geometry, and then runs the selected exporter.
+ *
+ * @param state - Viewer state containing the currently loaded model
+ * @param exporterType - "glb" or "obj" (controls which Three.js exporter is used)
+ * @param onStatus - Callback for status messages (typically updates a UI status element)
+ */
 export function exportCorrectedModel(
   state: ViewerState,
   exporterType: "glb" | "obj",

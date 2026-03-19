@@ -1,3 +1,9 @@
+/**
+ * Controller responsible for wiring export UI buttons to the export logic.
+ *
+ * This controller does not perform export itself; it delegates to
+ * `exportCorrectedModel` in `three/modelExporter`.
+ */
 import type { ViewerState } from "../state/viewerState";
 import type { AppElements } from "../utils/dom";
 import { exportCorrectedModel } from "../three/modelExporter";

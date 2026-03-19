@@ -1,3 +1,10 @@
+/**
+ * Controller that wires UI events to model loading and saving logic.
+ *
+ * - Listens for file input changes and delegates loading to ModelLoaderService.
+ * - Handles saving a model to the server via modelService.
+ * - Exposes project export/debug button behavior.
+ */
 import type { ViewerState } from "../state/viewerState";
 import type { AppElements } from "../utils/dom";
 import type { AuthController } from "./authController";
