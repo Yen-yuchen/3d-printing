@@ -3,7 +3,7 @@ import type { AppElements } from "../utils/dom";
 import type { SceneManager } from "../three/sceneManager";
 import { CheckpointManager } from "../three/checkpointManager";
 import { applySimulatedVonMises } from "../three/stressAnalysis";
-import { performSimplification, updateBudgetInputFromCurrent } from "../three/meshOperations";
+import { performSimplification, updateBudgetInputFromCurrent, performSubdivision } from "../three/meshOperations";
 import {
   renderCheckpointSaved,
   renderCheckpointToggle,
@@ -50,6 +50,23 @@ export class MeshController {
         return;
       }
       performSimplification(this.viewerState, this.elements, "count", budget);
+    });
+
+    this.elements.btnSubdivision?.addEventListener("click", () => {
+      if (!this.viewerState.currentModel) {
+        setStatus(this.elements.statusEl, "No model loaded");
+        return;
+      }
+      const maxEdgeLength = parseFloat(this.elements.subdivisionEdgeSlider?.value ?? "0.5");
+      const maxIterations = parseInt(this.elements.subdivisionIterInput?.value ?? "2", 10);
+      performSubdivision(this.viewerState, this.elements, maxEdgeLength, maxIterations);
+    });
+
+    this.elements.subdivisionEdgeSlider?.addEventListener("input", () => {
+      if (this.elements.subdivisionEdgeValue) {
+        this.elements.subdivisionEdgeValue.textContent = 
+          parseFloat(this.elements.subdivisionEdgeSlider!.value).toFixed(1);
+      }
     });
 
     this.elements.btnSaveCheckpoint?.addEventListener("click", () => {

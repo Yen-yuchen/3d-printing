@@ -8,7 +8,7 @@ import { DEFAULT_MODEL_COLOR, SIMPLIFICATION } from "../utils/constants";
 import { renderBudgetInfo } from "../views/meshToolsView";
 import { setStatus } from "../views/statusView";
 import { disposeObject3D, getFirstMesh, traverseMeshes } from "../utils/threeUtils";
-
+import { TessellateModifier } from 'three/examples/jsm/modifiers/TessellateModifier.js'; 
 const simplifyModifier = new SimplifyModifier();
 
 export function getTargetObject(state: ViewerState, sceneManager: SceneManager): THREE.Object3D {
@@ -230,4 +230,46 @@ export function applyDensityHeatmap(state: ViewerState): void {
   const material = mesh.material as THREE.MeshStandardMaterial;
   material.vertexColors = true;
   material.needsUpdate = true;
+}
+export function performSubdivision(state: ViewerState, elements: AppElements, maxEdgeLength: number = 0.5, maxIterations: number = 2) {
+    if (!state.currentModel) return;
+
+    setStatus(elements.statusEl, "Computing mesh subdivision...");
+
+    state.currentModel.traverse((child: THREE.Object3D) => {
+        if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            let geometry = mesh.geometry;
+
+            
+            if (geometry.index !== null) {
+                geometry = geometry.toNonIndexed();
+            }
+
+            // build the modifier with user-defined parameters
+            const modifier = new TessellateModifier(maxEdgeLength, maxIterations);
+
+            try {
+                // start subdivision
+                const subdividedGeo = modifier.modify(geometry);
+
+                // update mesh geometry
+                mesh.geometry.dispose();
+                mesh.geometry = subdividedGeo;
+
+                // update vertex count display
+                const currentVerts = subdividedGeo.attributes.position.count;
+                const polyCountLabel = document.getElementById('polyCount');
+                if (polyCountLabel) {
+                    polyCountLabel.textContent = `Current Vertices: ${currentVerts}`;
+                }
+                
+                console.log(`Subdivision complete. New vertex count: ${currentVerts}`);
+            } catch (e) {
+                console.error("Subdivision failed", e);
+            }
+        }
+    });
+
+    setStatus(elements.statusEl, "Subdivision complete");
 }

@@ -17,6 +17,10 @@ export interface AppElements {
   meshValue: HTMLElement | null;
   budgetInput: HTMLInputElement | null;
   btnApplyBudget: HTMLElement | null;
+  btnSubdivision: HTMLButtonElement | null;
+  subdivisionEdgeSlider: HTMLInputElement | null;
+  subdivisionEdgeValue: HTMLElement | null;
+  subdivisionIterInput: HTMLInputElement | null;
   originalCountLabel: HTMLElement | null;
   polyCountLabel: HTMLElement | null;
 
@@ -82,6 +86,10 @@ export function getAppElements(): AppElements {
     meshValue: byId("meshDensityValue"),
     budgetInput: byId<HTMLInputElement>("polyBudgetInput"),
     btnApplyBudget: byId("btnApplyBudget"),
+    btnSubdivision: byId<HTMLButtonElement>("btnSubdivision"),
+    subdivisionEdgeSlider: byId<HTMLInputElement>("subdivisionEdgeSlider"),
+    subdivisionEdgeValue: byId("subdivisionEdgeValue"),
+    subdivisionIterInput: byId<HTMLInputElement>("subdivisionIterInput"),
     originalCountLabel: byId("originalCountLabel"),
     polyCountLabel: byId("polyCount"),
 
