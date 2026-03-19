@@ -169,38 +169,44 @@ export function performSimplification(
       const originalCount = originalGeometry.attributes.position.count;
       let targetCount = 0;
 
-      // Calculate target vertex count based on simplification mode
+      let keepCount = 0;
+
+      // 1. calculate the target vertex count based on the chosen simplification mode
       if (targetType === "ratio") {
-        // Remove percentage of vertices (e.g., ratio 0.5 = remove 50%)
-        targetCount = Math.floor(originalCount * (1 - value));
+        // value from MeshController 
+        keepCount = Math.floor(originalCount * value);
       } else {
-        // Remove absolute number of vertices from the entire model
-        const globalOriginal = parseInt(elements.originalCountLabel?.textContent || "1", 10);
-        let removeRatio = value / globalOriginal;
-        removeRatio = Math.max(0, Math.min(1, removeRatio));
-        targetCount = Math.floor(originalCount * (1 - removeRatio));
+        // targetType is "count"，
+        keepCount = value;
       }
 
-      // Enforce minimum vertex count to prevent over-simplification
+      // 2. calculate the minimum vertex count to keep based on absolute and percentage limits
       const absoluteMin = SIMPLIFICATION.absoluteMinVertices;
       const percentageMin = Math.floor(originalCount * SIMPLIFICATION.minPercentOfOriginal);
-      const minLimit = Math.max(absoluteMin, percentageMin);
+      const minKeepLimit = Math.max(absoluteMin, percentageMin);
 
-      if (targetCount < minLimit) {
-        targetCount = minLimit;
+      // 3. make sure the target keep count is not below the minimum limit and not above the original count
+      if (keepCount < minKeepLimit) {
+        keepCount = minKeepLimit;
+      }
+      if (keepCount > originalCount) {
+        keepCount = originalCount;
       }
 
-      // If target is very close to original, skip simplification
-      if (targetCount >= originalCount * 0.99) {
+      // 4. if the target keep count is very close to the original count (e.g., 99% or more), skip simplification and restore original geometry
+      if (keepCount >= originalCount * 0.99) {
         mesh.geometry.dispose();
         mesh.geometry = originalGeometry.clone();
         currentTotalVertices += originalCount;
-        return;
+        return; 
       }
+
+      // 5. calculate how many vertices to remove based on the target keep count
+      const removeCount = originalCount - keepCount;
 
       // Perform simplification using the SimplifyModifier
       try {
-        const simplified = simplifyModifier.modify(originalGeometry.clone(), targetCount);
+        const simplified = simplifyModifier.modify(originalGeometry.clone(), removeCount);
         mesh.geometry.dispose();
         mesh.geometry = simplified;
         currentTotalVertices += simplified.attributes.position.count;
