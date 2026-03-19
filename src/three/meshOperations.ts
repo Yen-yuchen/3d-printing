@@ -2,7 +2,7 @@
 import * as THREE from "three";
 import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
 import { SimplifyModifier } from "three/examples/jsm/modifiers/SimplifyModifier.js";
-import { TessellateModifier } from 'three/examples/jsm/modifiers/TessellateModifier.js'; 
+import { TessellateModifier } from "three/examples/jsm/modifiers/TessellateModifier.js";
 
 // Type imports for viewer state, scene management, and UI elements
 import type { ViewerState } from "../state/viewerState";
@@ -13,13 +13,20 @@ import type { AppElements } from "../utils/dom";
 import { DEFAULT_MODEL_COLOR, SIMPLIFICATION } from "../utils/constants";
 import { renderBudgetInfo } from "../views/meshToolsView";
 import { setStatus } from "../views/statusView";
-import { disposeObject3D, getFirstMesh, traverseMeshes } from "../utils/threeUtils";
+import {
+  disposeObject3D,
+  getFirstMesh,
+  traverseMeshes,
+} from "../utils/threeUtils";
 
 // Initialize the simplify modifier for mesh reduction
 const simplifyModifier = new SimplifyModifier();
 
 // Retrieves the target object for operations - either the currently loaded model or the default cube
-export function getTargetObject(state: ViewerState, sceneManager: SceneManager): THREE.Object3D {
+export function getTargetObject(
+  state: ViewerState,
+  sceneManager: SceneManager,
+): THREE.Object3D {
   return state.currentModel ?? sceneManager.cube;
 }
 
@@ -44,7 +51,10 @@ export function mergeModelVertices(object: THREE.Object3D): void {
 }
 
 // Removes the currently loaded model from the scene and frees up its memory
-export function clearCurrentModel(state: ViewerState, sceneManager: SceneManager): void {
+export function clearCurrentModel(
+  state: ViewerState,
+  sceneManager: SceneManager,
+): void {
   if (!state.currentModel) return;
   // Remove from THREE.js scene
   sceneManager.scene.remove(state.currentModel);
@@ -55,7 +65,10 @@ export function clearCurrentModel(state: ViewerState, sceneManager: SceneManager
 }
 
 // Controls visibility of grid and axes helper based on UI toggle
-export function applyHelperVisibility(sceneManager: SceneManager, elements: AppElements): void {
+export function applyHelperVisibility(
+  sceneManager: SceneManager,
+  elements: AppElements,
+): void {
   const showGrid = elements.gridToggle?.checked ?? true;
   sceneManager.gridHelper.visible = showGrid;
   sceneManager.axesHelper.visible = showGrid;
@@ -63,7 +76,11 @@ export function applyHelperVisibility(sceneManager: SceneManager, elements: AppE
 
 // Shows or hides the model in the 3D scene based on the model visibility toggle
 // If no model is loaded, shows the default cube instead
-export function applyModelVisibility(state: ViewerState, sceneManager: SceneManager, elements: AppElements): void {
+export function applyModelVisibility(
+  state: ViewerState,
+  sceneManager: SceneManager,
+  elements: AppElements,
+): void {
   const showModel = elements.modelToggle?.checked ?? true;
   if (state.currentModel) state.currentModel.visible = showModel;
   sceneManager.cube.visible = !state.currentModel && showModel;
@@ -71,7 +88,11 @@ export function applyModelVisibility(state: ViewerState, sceneManager: SceneMana
 
 // Scales the target object (model or cube) based on the slider value
 // Slider value of 100 = 1.0 scale, 50 = 0.5 scale, etc.
-export function applyScaleFromSlider(state: ViewerState, sceneManager: SceneManager, elements: AppElements): void {
+export function applyScaleFromSlider(
+  state: ViewerState,
+  sceneManager: SceneManager,
+  elements: AppElements,
+): void {
   const sliderValue = Number(elements.scaleSlider?.value ?? 100);
   const factor = sliderValue / 100;
   const target = getTargetObject(state, sceneManager);
@@ -96,7 +117,11 @@ export function setWireframe(object: THREE.Object3D, enabled: boolean): void {
 }
 
 // Applies wireframe display mode based on the wireframe toggle checkbox
-export function applyWireframe(state: ViewerState, sceneManager: SceneManager, elements: AppElements): void {
+export function applyWireframe(
+  state: ViewerState,
+  sceneManager: SceneManager,
+  elements: AppElements,
+): void {
   const enabled = elements.wireToggle?.checked ?? false;
   const target = getTargetObject(state, sceneManager);
   setWireframe(target, enabled);
@@ -110,7 +135,9 @@ export function applyModelColor(state: ViewerState, colorHex: string): void {
   const color = new THREE.Color(colorHex || DEFAULT_MODEL_COLOR);
   // Apply the color to all meshes in the model
   traverseMeshes(state.currentModel, (mesh) => {
-    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
     materials.forEach((material) => {
       if ((material as THREE.MeshStandardMaterial).color) {
         (material as THREE.MeshStandardMaterial).color.set(color);
@@ -121,7 +148,10 @@ export function applyModelColor(state: ViewerState, colorHex: string): void {
 
 // Updates the budget display with current and original vertex counts
 // Shows how much the model has been simplified from its original state
-export function updateBudgetInputFromCurrent(state: ViewerState, elements: AppElements): void {
+export function updateBudgetInputFromCurrent(
+  state: ViewerState,
+  elements: AppElements,
+): void {
   if (!state.currentModel) return;
 
   let currentVertices = 0;
@@ -132,7 +162,8 @@ export function updateBudgetInputFromCurrent(state: ViewerState, elements: AppEl
     currentVertices += mesh.geometry.attributes.position.count;
     // Count vertices in original geometry (before simplification), or use current if not saved
     if (mesh.userData.originalGeometry) {
-      originalVertices += mesh.userData.originalGeometry.attributes.position.count;
+      originalVertices +=
+        mesh.userData.originalGeometry.attributes.position.count;
     } else {
       originalVertices += mesh.geometry.attributes.position.count;
     }
@@ -165,7 +196,8 @@ export function performSimplification(
         mesh.userData.originalGeometry = mesh.geometry.clone();
       }
 
-      const originalGeometry = mesh.userData.originalGeometry as THREE.BufferGeometry;
+      const originalGeometry = mesh.userData
+        .originalGeometry as THREE.BufferGeometry;
       const originalCount = originalGeometry.attributes.position.count;
       let targetCount = 0;
 
@@ -173,7 +205,7 @@ export function performSimplification(
 
       // 1. calculate the target vertex count based on the chosen simplification mode
       if (targetType === "ratio") {
-        // value from MeshController 
+        // value from MeshController
         keepCount = Math.floor(originalCount * value);
       } else {
         // targetType is "count"，
@@ -182,7 +214,9 @@ export function performSimplification(
 
       // 2. calculate the minimum vertex count to keep based on absolute and percentage limits
       const absoluteMin = SIMPLIFICATION.absoluteMinVertices;
-      const percentageMin = Math.floor(originalCount * SIMPLIFICATION.minPercentOfOriginal);
+      const percentageMin = Math.floor(
+        originalCount * SIMPLIFICATION.minPercentOfOriginal,
+      );
       const minKeepLimit = Math.max(absoluteMin, percentageMin);
 
       // 3. make sure the target keep count is not below the minimum limit and not above the original count
@@ -198,7 +232,7 @@ export function performSimplification(
         mesh.geometry.dispose();
         mesh.geometry = originalGeometry.clone();
         currentTotalVertices += originalCount;
-        return; 
+        return;
       }
 
       // 5. calculate how many vertices to remove based on the target keep count
@@ -206,7 +240,10 @@ export function performSimplification(
 
       // Perform simplification using the SimplifyModifier
       try {
-        const simplified = simplifyModifier.modify(originalGeometry.clone(), removeCount);
+        const simplified = simplifyModifier.modify(
+          originalGeometry.clone(),
+          removeCount,
+        );
         mesh.geometry.dispose();
         mesh.geometry = simplified;
         currentTotalVertices += simplified.attributes.position.count;
@@ -252,9 +289,21 @@ export function applyDensityHeatmap(state: ViewerState): void {
     const cIndex = index.getX(j + 2);
 
     // Get vertex positions
-    const a = new THREE.Vector3(position.getX(aIndex), position.getY(aIndex), position.getZ(aIndex));
-    const b = new THREE.Vector3(position.getX(bIndex), position.getY(bIndex), position.getZ(bIndex));
-    const c = new THREE.Vector3(position.getX(cIndex), position.getY(cIndex), position.getZ(cIndex));
+    const a = new THREE.Vector3(
+      position.getX(aIndex),
+      position.getY(aIndex),
+      position.getZ(aIndex),
+    );
+    const b = new THREE.Vector3(
+      position.getX(bIndex),
+      position.getY(bIndex),
+      position.getZ(bIndex),
+    );
+    const c = new THREE.Vector3(
+      position.getX(cIndex),
+      position.getY(cIndex),
+      position.getZ(cIndex),
+    );
 
     // Calculate face area using cross product
     const ab = b.clone().sub(a);
@@ -287,60 +336,72 @@ export function applyDensityHeatmap(state: ViewerState): void {
 
   for (let i = 0; i < vertexCount; i++) {
     // Normalize density to 0-1 range
-    const t = maxDensity !== minDensity ? (density[i] - minDensity) / (maxDensity - minDensity) : 0;
+    const t =
+      maxDensity !== minDensity
+        ? (density[i] - minDensity) / (maxDensity - minDensity)
+        : 0;
     // HSL color: high density (t=1) = red, low density (t=0) = blue
     color.setHSL(t * 0.66, 1.0, 0.5);
     colors.push(color.r, color.g, color.b);
   }
 
   // Apply colors to mesh
-  mesh.geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  mesh.geometry.setAttribute(
+    "color",
+    new THREE.Float32BufferAttribute(colors, 3),
+  );
   const material = mesh.material as THREE.MeshStandardMaterial;
   material.vertexColors = true;
   material.needsUpdate = true;
 }
 // Subdivides the mesh by adding vertices along edges, creating finer mesh detail
 // Uses TessellateModifier to add vertices up to maxEdgeLength over maxIterations passes
-export function performSubdivision(state: ViewerState, elements: AppElements, maxEdgeLength: number = 0.5, maxIterations: number = 2) {
-    if (!state.currentModel) return;
+export function performSubdivision(
+  state: ViewerState,
+  elements: AppElements,
+  maxEdgeLength: number = 0.5,
+  maxIterations: number = 2,
+) {
+  if (!state.currentModel) return;
 
-    setStatus(elements.statusEl, "Computing mesh subdivision...");
+  setStatus(elements.statusEl, "Computing mesh subdivision...");
 
-    // Process each mesh in the model
-    state.currentModel.traverse((child: THREE.Object3D) => {
-        if ((child as THREE.Mesh).isMesh) {
-            const mesh = child as THREE.Mesh;
-            let geometry = mesh.geometry;
+  // Process each mesh in the model
+  state.currentModel.traverse((child: THREE.Object3D) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      let geometry = mesh.geometry;
 
-            // Convert indexed geometry to non-indexed for tessellation
-            if (geometry.index !== null) {
-                geometry = geometry.toNonIndexed();
-            }
+      // Convert indexed geometry to non-indexed for tessellation
+      if (geometry.index !== null) {
+        geometry = geometry.toNonIndexed();
+      }
 
-            // Create tessellation modifier with user-defined parameters
-            const modifier = new TessellateModifier(maxEdgeLength, maxIterations);
+      // Create tessellation modifier with user-defined parameters
+      const modifier = new TessellateModifier(maxEdgeLength, maxIterations);
 
-            try {
-                // Apply subdivision to create finer mesh
-                const subdividedGeo = modifier.modify(geometry);
+      try {
+        // Apply subdivision to create finer mesh
+        const subdividedGeo = modifier.modify(geometry);
 
-                // Replace old geometry with subdivided version
-                mesh.geometry.dispose();
-                mesh.geometry = subdividedGeo;
+        // Replace old geometry with subdivided version
+        mesh.geometry.dispose();
+        mesh.geometry = subdividedGeo;
 
-                // Update the vertex count display in UI
-                const currentVerts = subdividedGeo.attributes.position.count;
-                const polyCountLabel = document.getElementById('polyCount');
-                if (polyCountLabel) {
-                    polyCountLabel.textContent = `Current Vertices: ${currentVerts}`;
-                }
-                
-                console.log(`Subdivision complete. New vertex count: ${currentVerts}`);
-            } catch (e) {
-                console.error("Subdivision failed", e);
-            }
+        // Update the vertex count display in UI
+        const currentVerts = subdividedGeo.attributes.position.count;
+        const polyCountLabel = document.getElementById("polyCount");
+        if (polyCountLabel) {
+          polyCountLabel.textContent = `Current Vertices: ${currentVerts}`;
         }
-    });
 
-    setStatus(elements.statusEl, "Subdivision complete");
+        console.log(`Subdivision complete. New vertex count: ${currentVerts}`);
+      } catch (e) {
+        console.error("Subdivision failed", e);
+      }
+    }
+  });
+
+  setStatus(elements.statusEl, "Subdivision complete");
 }
+

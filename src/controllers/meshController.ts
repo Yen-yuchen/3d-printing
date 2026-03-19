@@ -2,6 +2,7 @@ import type { ViewerState } from "../state/viewerState";
 import type { AppElements } from "../utils/dom";
 import type { SceneManager } from "../three/sceneManager";
 import { CheckpointManager } from "../three/checkpointManager";
+import { ExportController } from "./exportController";
 import { applySimulatedVonMises } from "../three/stressAnalysis";
 import { performSimplification, updateBudgetInputFromCurrent, performSubdivision } from "../three/meshOperations";
 import {
@@ -90,7 +91,8 @@ export class MeshController {
       const saved = this.checkpointManager.saveCheckpoint();
       if (!saved) return;
       renderCheckpointSaved(this.elements);
-      console.log("Checkpoint saved");
+
+      console.log("Checkpoint saved and saved locally");
     });
 
     this.elements.btnRestoreCheckpoint?.addEventListener("click", () => {

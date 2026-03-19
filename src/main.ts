@@ -41,6 +41,7 @@ const viewerController = new ViewerController(
   viewerState,
   elements,
   sceneManager,
+  authState,
 );
 const meshController = new MeshController(
   viewerState,
@@ -48,7 +49,7 @@ const meshController = new MeshController(
   sceneManager,
   checkpointManager,
 );
-const exportController = new ExportController(viewerState, elements);
+const exportController = new ExportController(viewerState, elements, authState);
 
 authController.init();
 modelController.init();

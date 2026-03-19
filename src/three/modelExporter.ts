@@ -7,16 +7,29 @@ import { downloadFile } from "../utils/fileUtils";
 export async function uploadModelToServer(
   fileData: Blob,
   fileName: string,
-  userId: string,
-  projectId: string,
+  token: string,
+  modelName?: string,
+  modelId?: number,
 ): Promise<any> {
   const formData = new FormData();
-  formData.append("model", fileData, fileName);
-  formData.append("userId", userId);
-  formData.append("projectId", projectId);
 
-  const response = await fetch("http://localhost:3001/api/save-model", {
+  // IMPORTANT:
+  // backend /models expects the field name to be "file", not "model"
+  formData.append("file", fileData, fileName);
+
+  if (modelName) {
+    formData.append("model_name", modelName);
+  }
+
+  if (modelId !== undefined) {
+    formData.append("model_id", String(modelId));
+  }
+
+  const response = await fetch("http://localhost:3001/api/models", {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     body: formData,
   });
 
@@ -110,8 +123,7 @@ export function exportCorrectedModel(
 export function saveModelLocally(
   state: ViewerState,
   fileName: string,
-  userId: string,
-  // project_id
+  token: string,
   onStatus: (message: string) => void,
 ): void {
   if (!state.currentModel) {
@@ -133,27 +145,22 @@ export function saveModelLocally(
             type: "application/octet-stream",
           });
 
-          await uploadModelToServer(
-            blob,
-            fileName + ".glb", // make system for creating name
-            userId, // get user's name
-            "default-project", // get project name
-          );
+          await uploadModelToServer(blob, `${fileName}.glb`, token, fileName);
 
-          onStatus("Model saved to local storage successfully.");
+          onStatus("Model saved successfully.");
         } catch (error) {
           console.error("Local save upload error:", error);
-          onStatus("Failed to save model locally.");
+          onStatus("Failed to save model.");
         }
       },
       (error) => {
         console.error("GLB Export Error:", error);
-        onStatus("Failed to prepare model for local save.");
+        onStatus("Failed to prepare model for save.");
       },
       { binary: true },
     );
   } catch (error) {
     console.error("Local Save Error", error);
-    onStatus("Failed to save model locally.");
+    onStatus("Failed to save model.");
   }
 }

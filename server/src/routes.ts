@@ -187,17 +187,17 @@ api.get("/models", requireAuth, async (req: any, res: any) => {
 api.post(
   "/models",
   requireAuth,
-  upload.single("file") as any,
+  memoryUpload.single("file"),
   async (req: any, res: any) => {
-    console.log("Attempting to upload model");
     const userId = Number(req.user?.user_id);
     const file = req.file as any | undefined;
 
-    if (!file) return res.status(400).json({ error: "file required" });
+    if (!file) {
+      return res.status(400).json({ error: "file required" });
+    }
 
-    // normalize/validate file_format to match your DB CHECK constraint
     const allowedFormats = new Set(["stl", "obj", "gltf", "glb"]);
-    const original = file.originalname || "model";
+    const original = file.originalname || "model.glb";
     const ext = path.extname(original).replace(".", "").toLowerCase();
 
     if (!allowedFormats.has(ext)) {
@@ -213,10 +213,25 @@ api.post(
     const uploadedAt = req.body?.uploadedAt
       ? new Date(req.body.uploadedAt)
       : new Date();
-    const filePath = file.filename; // currently storing multer filename
-    const fileSizeBytes = Number(file.size ?? 0); // required NOT NULL in DB
 
-    // If client sent model_id, update that row (must belong to this user)
+    const projectId =
+      String(req.body?.project_id ?? "default-project").trim() ||
+      "default-project";
+
+    const safeUserId = String(userId).replace(/[^a-zA-Z0-9._-]/g, "_");
+    const safeProjectId = projectId.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const safeModelName = modelName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const safeFileName = `${safeModelName}.${ext}`;
+
+    const saveDir = path.join(STORAGE_DIR, safeUserId, safeProjectId);
+    fs.mkdirSync(saveDir, { recursive: true });
+
+    const absPath = path.join(saveDir, safeFileName);
+    fs.writeFileSync(absPath, file.buffer);
+
+    const relativePath = path.join(safeUserId, safeProjectId, safeFileName);
+    const fileSizeBytes = Number(file.size ?? 0);
+
     const modelIdRaw = String(req.body?.model_id ?? "").trim();
     const modelId = modelIdRaw ? Number(modelIdRaw) : null;
 
@@ -224,15 +239,15 @@ api.post(
       if (modelId) {
         const result = await pool.query(
           `UPDATE public.models
-       SET file_path = $1,
-           file_format = $2,
-           model_name = $3,
-           uploaded_at = $4,
-           file_size_bytes = $5
-       WHERE model_id = $6 AND user_id = $7
-       RETURNING model_id, user_id, file_path, file_format, model_name, uploaded_at, file_size_bytes`,
+           SET file_path = $1,
+               file_format = $2,
+               model_name = $3,
+               uploaded_at = $4,
+               file_size_bytes = $5
+           WHERE model_id = $6 AND user_id = $7
+           RETURNING model_id, user_id, file_path, file_format, model_name, uploaded_at, file_size_bytes`,
           [
-            filePath,
+            relativePath,
             ext,
             modelName,
             uploadedAt,
@@ -243,20 +258,18 @@ api.post(
         );
 
         if (result.rowCount === 0) {
-          // either doesn't exist or doesn't belong to user
           return res.status(404).json({ error: "model not found" });
         }
 
         return res.status(200).json(result.rows[0]);
       }
 
-      // Otherwise, insert new row
       const result = await pool.query(
         `INSERT INTO public.models
-       (user_id, file_path, file_format, model_name, uploaded_at, file_size_bytes)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING model_id, user_id, file_path, file_format, model_name, uploaded_at, file_size_bytes`,
-        [userId, filePath, ext, modelName, uploadedAt, fileSizeBytes],
+         (user_id, file_path, file_format, model_name, uploaded_at, file_size_bytes)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING model_id, user_id, file_path, file_format, model_name, uploaded_at, file_size_bytes`,
+        [userId, relativePath, ext, modelName, uploadedAt, fileSizeBytes],
       );
 
       return res.status(201).json(result.rows[0]);
@@ -266,7 +279,6 @@ api.post(
     }
   },
 );
-
 // Download model file (ownership enforced)
 api.get("/models/:modelId/file", requireAuth, async (req: any, res: any) => {
   const userId = Number(req.user?.user_id);
@@ -357,40 +369,107 @@ api.delete("/models/:modelId", requireAuth, async (req: any, res: any) => {
 });
 
 // save localy
-api.post("/save-model", memoryUpload.single("model"), (req: any, res: any) => {
-  try {
-    const userId = String(req.body.userId || "local-user");
-    const projectId = String(req.body.projectId || "default-project");
+api.post(
+  "/save-model",
+  requireAuth,
+  memoryUpload.single("model"),
+  (req: any, res: any) => {
+    try {
+      const userId = String(req.user?.user_id);
+      const projectId = String(req.body.projectId || "default-project");
 
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+      if (!userId) {
+        return res.status(401).json({ error: "unauthorized" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const safeUserId = userId.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const safeProjectId = projectId.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const safeFileName = String(req.file.originalname || "model.glb").replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_",
+      );
+
+      const saveDir = path.join(
+        process.cwd(),
+        "storage",
+        safeUserId,
+        safeProjectId,
+      );
+      fs.mkdirSync(saveDir, { recursive: true });
+
+      const filePath = path.join(saveDir, safeFileName);
+      fs.writeFileSync(filePath, req.file.buffer);
+
+      return res.json({
+        message: "File saved successfully",
+        filePath,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Failed to save file" });
+    }
+  },
+);
+// get locals
+api.get("/saved-models", requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = String(req.user?.user_id);
+    const safeUserId = userId.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+    const userDir = path.join(STORAGE_DIR, safeUserId);
+
+    if (!fs.existsSync(userDir)) {
+      return res.json([]);
     }
 
-    const safeUserId = userId.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const safeProjectId = projectId.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const safeFileName = String(req.file.originalname || "model.glb").replace(
-      /[^a-zA-Z0-9._-]/g,
-      "_",
+    const results: Array<{
+      projectId: string;
+      fileName: string;
+      relativePath: string;
+      absolutePath: string;
+      sizeBytes: number;
+      modifiedAt: string;
+    }> = [];
+
+    const projectDirs = fs.readdirSync(userDir, { withFileTypes: true });
+
+    for (const entry of projectDirs) {
+      if (!entry.isDirectory()) continue;
+
+      const projectId = entry.name;
+      const projectDir = path.join(userDir, projectId);
+
+      const files = fs.readdirSync(projectDir, { withFileTypes: true });
+
+      for (const file of files) {
+        if (!file.isFile()) continue;
+
+        const absPath = path.join(projectDir, file.name);
+        const stats = fs.statSync(absPath);
+
+        results.push({
+          projectId,
+          fileName: file.name,
+          relativePath: path.join(safeUserId, projectId, file.name),
+          absolutePath: absPath,
+          sizeBytes: stats.size,
+          modifiedAt: stats.mtime.toISOString(),
+        });
+      }
+    }
+
+    results.sort(
+      (a, b) =>
+        new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime(),
     );
 
-    const saveDir = path.join(
-      process.cwd(),
-      "storage",
-      safeUserId,
-      safeProjectId,
-    );
-
-    fs.mkdirSync(saveDir, { recursive: true });
-
-    const filePath = path.join(saveDir, safeFileName);
-    fs.writeFileSync(filePath, req.file.buffer);
-
-    return res.json({
-      message: "File saved successfully",
-      filePath,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Failed to save file" });
+    return res.json(results);
+  } catch (err) {
+    console.error("Failed to list saved models", err);
+    return res.status(500).json({ error: "Failed to list saved models" });
   }
 });
