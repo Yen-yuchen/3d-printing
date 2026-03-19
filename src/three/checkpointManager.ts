@@ -10,11 +10,18 @@ export class CheckpointManager {
   private checkpointMesh: THREE.Mesh | null = null;
   private isGhostVisible = false;
 
+  private readonly state: ViewerState;
+  private readonly sceneManager: SceneManager;
+  private readonly elements: AppElements;
   constructor(
-    private readonly state: ViewerState,
-    private readonly sceneManager: SceneManager,
-    private readonly elements: AppElements,
-  ) {}
+    state: ViewerState,
+    sceneManager: SceneManager,
+    elements: AppElements,
+  ) {
+    this.state = state;
+    this.sceneManager = sceneManager;
+    this.elements = elements;
+  }
 
   public saveCheckpoint(): boolean {
     const mesh = getFirstMesh(this.state.currentModel);
@@ -39,7 +46,9 @@ export class CheckpointManager {
         ? mesh.userData.originalGeometry.attributes.position.count
         : currentVertices;
 
-      let restoredPercentage = Math.round((currentVertices / originalVertices) * 100);
+      let restoredPercentage = Math.round(
+        (currentVertices / originalVertices) * 100,
+      );
       restoredPercentage = Math.max(0, Math.min(100, restoredPercentage));
 
       if (this.elements.meshSlider) {
@@ -85,7 +94,10 @@ export class CheckpointManager {
       depthTest: true,
     });
 
-    this.checkpointMesh = new THREE.Mesh(this.checkpointGeometry.clone(), material);
+    this.checkpointMesh = new THREE.Mesh(
+      this.checkpointGeometry.clone(),
+      material,
+    );
     this.checkpointMesh.visible = false;
 
     const targetMesh = getFirstMesh(this.state.currentModel);

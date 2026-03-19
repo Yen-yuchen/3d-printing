@@ -22,14 +22,32 @@ const elements = getAppElements();
 const sceneManager = new SceneManager(elements.viewer);
 
 const authController = new AuthController(authState, viewerState, elements);
-const checkpointManager = new CheckpointManager(viewerState, sceneManager, elements);
+const checkpointManager = new CheckpointManager(
+  viewerState,
+  sceneManager,
+  elements,
+);
 const loader = new ModelLoaderService(viewerState, sceneManager, elements, {
   onModelLoaded: () => authController.render(),
 });
 
-const modelController = new ModelController(viewerState, elements, authController, loader);
-const viewerController = new ViewerController(viewerState, elements, sceneManager);
-const meshController = new MeshController(viewerState, elements, sceneManager, checkpointManager);
+const modelController = new ModelController(
+  viewerState,
+  elements,
+  authController,
+  loader,
+);
+const viewerController = new ViewerController(
+  viewerState,
+  elements,
+  sceneManager,
+);
+const meshController = new MeshController(
+  viewerState,
+  elements,
+  sceneManager,
+  checkpointManager,
+);
 const exportController = new ExportController(viewerState, elements);
 
 authController.init();

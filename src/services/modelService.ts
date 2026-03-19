@@ -12,7 +12,16 @@ export interface SaveModelResponse {
   [key: string]: unknown;
 }
 
-export async function saveModel(params: SaveModelParams): Promise<SaveModelResponse> {
+export async function saveModel(
+  params: SaveModelParams,
+): Promise<SaveModelResponse> {
+  console.log("saveModel called with:", {
+    file: params.file,
+    fileName: params.fileName,
+    modelId: params.modelId,
+    token: params.token,
+  });
+
   const formData = new FormData();
   formData.append("file", params.file);
   formData.append("model_name", params.fileName);

@@ -42,11 +42,13 @@ export interface AppElements {
   authStatus: HTMLElement | null;
 
   emailInput: HTMLInputElement | null;
+  newModelNameInput: HTMLInputElement | null;
   loginBtnEmail: HTMLButtonElement | null;
   logoutBtnEmail: HTMLButtonElement | null;
   loggedOutPanel: HTMLElement | null;
   loggedInPanel: HTMLElement | null;
   welcomeMsg: HTMLElement | null;
+  btnLocalSave: HTMLButtonElement | null;
 
   newUserName: HTMLInputElement | null;
   newUserEmail: HTMLInputElement | null;
@@ -103,6 +105,8 @@ export function getAppElements(): AppElements {
     btnExportOBJ: byId("btnExportOBJ"),
     exportBtn: byId<HTMLButtonElement>("DbButton"),
 
+    btnLocalSave: byId("btnLocalSave"),
+
     loginUser: byId<HTMLInputElement>("loginUser"),
     loginPass: byId<HTMLInputElement>("loginPass"),
     btnLogin: byId<HTMLButtonElement>("btnLogin"),
@@ -111,6 +115,7 @@ export function getAppElements(): AppElements {
     authStatus: byId("authStatus"),
 
     emailInput: byId<HTMLInputElement>("email"),
+    newModelNameInput: byId<HTMLInputElement>("newModelName"),
     loginBtnEmail: byId<HTMLButtonElement>("loginBtn"),
     logoutBtnEmail: byId<HTMLButtonElement>("logoutBtn"),
     loggedOutPanel: byId("loggedOutPannel"),

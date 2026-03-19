@@ -11,11 +11,18 @@ import {
 } from "../three/meshOperations";
 
 export class ViewerController {
+  private readonly viewerState: ViewerState;
+  private readonly elements: AppElements;
+  private readonly sceneManager: SceneManager;
   constructor(
-    private readonly viewerState: ViewerState,
-    private readonly elements: AppElements,
-    private readonly sceneManager: SceneManager,
-  ) {}
+    viewerState: ViewerState,
+    elements: AppElements,
+    sceneManager: SceneManager,
+  ) {
+    this.viewerState = viewerState;
+    this.elements = elements;
+    this.sceneManager = sceneManager;
+  }
 
   public init(): void {
     this.elements.gridToggle?.addEventListener("change", () => {
@@ -44,7 +51,10 @@ export class ViewerController {
     });
 
     this.elements.modelColorPicker?.addEventListener("input", (event) => {
-      applyModelColor(this.viewerState, (event.target as HTMLInputElement).value);
+      applyModelColor(
+        this.viewerState,
+        (event.target as HTMLInputElement).value,
+      );
     });
 
     this.elements.viewer.addEventListener("click", () => {
