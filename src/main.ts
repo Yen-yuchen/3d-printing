@@ -27,6 +27,7 @@ const checkpointManager = new CheckpointManager(
   sceneManager,
   elements,
 );
+
 const loader = new ModelLoaderService(viewerState, sceneManager, elements, {
   onModelLoaded: () => authController.render(),
 });
@@ -37,18 +38,22 @@ const modelController = new ModelController(
   authController,
   loader,
 );
+
 const viewerController = new ViewerController(
   viewerState,
   elements,
   sceneManager,
   authState,
+  loader,
 );
+
 const meshController = new MeshController(
   viewerState,
   elements,
   sceneManager,
   checkpointManager,
 );
+
 const exportController = new ExportController(viewerState, elements, authState);
 
 authController.init();

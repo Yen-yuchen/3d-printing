@@ -1,10 +1,3 @@
-/**
- * Controller that wires UI events to model loading and saving logic.
- *
- * - Listens for file input changes and delegates loading to ModelLoaderService.
- * - Handles saving a model to the server via modelService.
- * - Exposes project export/debug button behavior.
- */
 import type { ViewerState } from "../state/viewerState";
 import type { AppElements } from "../utils/dom";
 import type { AuthController } from "./authController";
@@ -18,6 +11,7 @@ export class ModelController {
   private readonly elements: AppElements;
   private readonly authController: AuthController;
   private readonly loader: ModelLoaderService;
+
   constructor(
     viewerState: ViewerState,
     elements: AppElements,
@@ -67,8 +61,8 @@ export class ModelController {
           this.viewerState.currentModelId = Number(row.model_id);
         }
 
-        console.log("Saved model row:", row);
         setStatus(this.elements.statusEl, "Model saved");
+        window.dispatchEvent(new Event("models:changed"));
       } catch (error) {
         console.error("Save error", error);
         alert(`Save failed: ${String(error)}`);

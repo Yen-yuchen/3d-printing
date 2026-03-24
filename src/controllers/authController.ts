@@ -15,6 +15,7 @@ export class AuthController {
   private readonly authState: AuthState;
   private readonly viewerState: ViewerState;
   private readonly elements: AppElements;
+
   constructor(
     authState: AuthState,
     viewerState: ViewerState,
@@ -136,7 +137,11 @@ export class AuthController {
     const next = writeStoredAuth(token, username);
     this.authState.token = next.token;
     this.authState.user = next.user;
+
     this.render();
+
+    // Let other controllers (saved models list) refresh immediately.
+    window.dispatchEvent(new CustomEvent("auth:changed"));
   }
 
   private clearAuth(): void {

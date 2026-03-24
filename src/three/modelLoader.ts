@@ -44,6 +44,7 @@ export class ModelLoaderService {
   private readonly sceneManager: SceneManager;
   private readonly elements: AppElements;
   private readonly callbacks: ModelLoaderCallbacks = {};
+
   constructor(
     state: ViewerState,
     sceneManager: SceneManager,
@@ -87,15 +88,27 @@ export class ModelLoaderService {
       return;
     }
 
-    await this.loadSingle(mainSingle);
+    await this.loadSingle(mainSingle, null);
   }
 
-  private onLoaded(object: THREE.Object3D, file: File): void {
+  /** Public entry for loading an already-obtained File (e.g., downloaded saved model). */
+  public async loadFile(
+    file: File,
+    modelId: number | null = null,
+  ): Promise<void> {
+    await this.loadSingle(file, modelId);
+  }
+
+  private onLoaded(
+    object: THREE.Object3D,
+    file: File,
+    modelId: number | null,
+  ): void {
     clearCurrentModel(this.state, this.sceneManager);
     this.state.currentModel = object;
     this.state.lastLoadedFile = file;
     this.state.lastLoadedFileName = file.name;
-    this.state.currentModelId = null;
+    this.state.currentModelId = modelId;
 
     mergeModelVertices(object);
     this.sceneManager.scene.add(object);
@@ -181,7 +194,7 @@ export class ModelLoaderService {
       gltfLoader.load(
         fileMap.get(gltfFile.name)!,
         (gltf) => {
-          this.onLoaded(gltf.scene, gltfFile);
+          this.onLoaded(gltf.scene, gltfFile, null);
           urlsToRevoke.forEach(URL.revokeObjectURL);
           resolve();
         },
@@ -196,7 +209,7 @@ export class ModelLoaderService {
     });
   }
 
-  private async loadSingle(file: File): Promise<void> {
+  private async loadSingle(file: File, modelId: number | null): Promise<void> {
     const name = file.name.toLowerCase();
     const url = URL.createObjectURL(file);
 
@@ -211,7 +224,7 @@ export class ModelLoaderService {
         new GLTFLoader().load(
           url,
           (gltf) => {
-            this.onLoaded(gltf.scene, file);
+            this.onLoaded(gltf.scene, file, modelId);
             URL.revokeObjectURL(url);
             resolve();
           },
@@ -234,7 +247,7 @@ export class ModelLoaderService {
               roughness: 0.8,
               metalness: 0,
             });
-            this.onLoaded(new THREE.Mesh(geometry, material), file);
+            this.onLoaded(new THREE.Mesh(geometry, material), file, modelId);
             URL.revokeObjectURL(url);
             resolve();
           },
@@ -262,7 +275,7 @@ export class ModelLoaderService {
                 (child as THREE.Mesh).material = material;
               }
             });
-            this.onLoaded(object, file);
+            this.onLoaded(object, file, modelId);
             URL.revokeObjectURL(url);
             resolve();
           },

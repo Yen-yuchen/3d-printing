@@ -13,8 +13,6 @@ export async function uploadModelToServer(
 ): Promise<any> {
   const formData = new FormData();
 
-  // IMPORTANT:
-  // backend /models expects the field name to be "file", not "model"
   formData.append("file", fileData, fileName);
 
   if (modelName) {
