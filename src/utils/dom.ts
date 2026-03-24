@@ -54,6 +54,21 @@ export interface AppElements {
   newUserEmail: HTMLInputElement | null;
   btnCreateUser: HTMLButtonElement | null;
   createUserStatus: HTMLElement | null;
+
+  sxValue: HTMLLabelElement | null;
+  syValue: HTMLLabelElement | null;
+  szValue: HTMLLabelElement | null;
+  txValue: HTMLLabelElement | null;
+  tyValue: HTMLLabelElement | null;
+  tzValue: HTMLLabelElement | null;
+
+  sxSlider: HTMLInputElement | null;
+  sySlider: HTMLInputElement | null;
+  szSlider: HTMLInputElement | null;
+  txSlider: HTMLInputElement | null;
+  tySlider: HTMLInputElement | null;
+  tzSlider: HTMLInputElement | null;
+
 }
 
 function byId<T extends HTMLElement>(id: string): T | null {
@@ -126,5 +141,19 @@ export function getAppElements(): AppElements {
     newUserEmail: byId<HTMLInputElement>("newUserEmail"),
     btnCreateUser: byId<HTMLButtonElement>("btnCreateUser"),
     createUserStatus: byId("createUserStatus"),
+
+    sxValue: byId<HTMLLabelElement>("sx-value"),
+    syValue: byId<HTMLLabelElement>("sy-value"),
+    szValue: byId<HTMLLabelElement>("sz-value"),
+    txValue: byId<HTMLLabelElement>("tx-value"),
+    tyValue: byId<HTMLLabelElement>("ty-value"),
+    tzValue: byId<HTMLLabelElement>("tz-value"),
+
+    sxSlider: byId<HTMLInputElement>("sigma-x"),
+    sySlider: byId<HTMLInputElement>("sigma-y"),
+    szSlider: byId<HTMLInputElement>("sigma-z"),
+    txSlider: byId<HTMLInputElement>("tau-x"),
+    tySlider: byId<HTMLInputElement>("tau-y"),
+    tzSlider: byId<HTMLInputElement>("tau-z"),
   };
 }
