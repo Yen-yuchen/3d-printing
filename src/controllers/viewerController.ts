@@ -74,9 +74,9 @@ export class ViewerController {
       );
     });
 
-    this.elements.viewer.addEventListener("click", () => {
-      applyDensityHeatmap(this.viewerState);
-    });
+    // this.elements.viewer.addEventListener("click", () => {
+    //   applyDensityHeatmap(this.viewerState);
+    // });
 
     // Refresh list immediately on login/logout
     window.addEventListener("auth:changed", () => {
