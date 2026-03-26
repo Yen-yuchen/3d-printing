@@ -172,10 +172,16 @@ export function updateBudgetInputFromCurrent(
   // Update the UI display
   renderBudgetInfo(elements, currentVertices, originalVertices);
 }
-
-// Reduces the number of vertices in the model using the SimplifyModifier
-// Can simplify by ratio (e.g., reduce to 50% of original) or by absolute vertex count
-// Respects minimum vertex limits to prevent over-simplification
+/**
+ *  Reduces the number of vertices in the model using the SimplifyModifier
+ *  Can simplify by ratio (e.g., reduce to 50% of original) or by absolute vertex count
+ *  Respects minimum vertex limits to prevent over-simplification
+ * @param state - The current state of the 3D viewer, which contains the active model (`currentModel`) to be modified.
+ * @param elements - The DOM elements used to update the UI (e.g., status message and current vertex count label).
+ * @param targetType - The mode of simplification: `"ratio"` (percentage) or `"count"` (absolute number).
+ * @param value - The target numerical value. Represents a percentage (e.g., 0.5 for 50%) if `targetType` is "ratio", or an exact vertex count if "count".
+ * @returns {void} This function does not return a value. It modifies the 3D meshes in-place and updates the UI asynchronously.
+ */
 export function performSimplification(
   state: ViewerState,
   elements: AppElements,
@@ -199,7 +205,7 @@ export function performSimplification(
       const originalGeometry = mesh.userData
         .originalGeometry as THREE.BufferGeometry;
       const originalCount = originalGeometry.attributes.position.count;
-      let targetCount = 0;
+      //let targetCount = 0;
 
       let keepCount = 0;
 
@@ -354,8 +360,20 @@ export function applyDensityHeatmap(state: ViewerState): void {
   material.vertexColors = true;
   material.needsUpdate = true;
 }
-// Subdivides the mesh by adding vertices along edges, creating finer mesh detail
-// Uses TessellateModifier to add vertices up to maxEdgeLength over maxIterations passes
+
+
+/**
+ * Subdivides the 3D mesh to increase vertex density and create finer geometric detail.
+ * This function utilizes the Three.js `TessellateModifier`. It automatically converts 
+ * indexed geometries to non-indexed format before recursively splitting edges that exceed 
+ * the specified maximum length.
+ *
+ * @param state - The global viewer state containing the active `currentModel` to be subdivided.
+ * @param elements - The UI elements collection used to display loading and status messages.
+ * @param maxEdgeLength - The maximum allowed edge length. Any edge longer than this threshold will be split in half. (Default: 0.5)
+ * @param maxIterations - The maximum number of algorithmic passes the modifier will execute. (Default: 2)
+ * @returns {void} Modifies the loaded 3D meshes in-place and directly updates the UI vertex count.
+ */
 export function performSubdivision(
   state: ViewerState,
   elements: AppElements,

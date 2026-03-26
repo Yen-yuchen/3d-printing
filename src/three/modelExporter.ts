@@ -72,7 +72,16 @@ function buildExportScene(state: ViewerState): THREE.Scene {
 
   return exportScene;
 }
-
+/**
+ * Packages the currently modified 3D model and exports it to the user's local machine.
+ * This function builds an isolated export scene and utilizes Three.js exporters to generate 
+ * either a binary glTF (.glb) or a standard Wavefront (.obj) file.
+ *
+ * @param state - The current viewer state containing the `currentModel` ready for export.
+ * @param exporterType - The target file format for the export. Accepts `"glb"` (optimized binary) or `"obj"` (standard text).
+ * @param onStatus - A callback function used to asynchronously report progress, success, or error messages back to the UI.
+ * @returns {void} Does not return a value. It triggers a direct file download in the user's browser upon completion.
+ */
 export function exportCorrectedModel(
   state: ViewerState,
   exporterType: "glb" | "obj",
