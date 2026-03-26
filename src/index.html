@@ -412,31 +412,49 @@
               <i class=""></i> Show Von Mises Stress
             </button>
             <div class="section">
-            <div class="field">
-              <label>σ_x (MPa) <span class="val" id="sx-val">100</span></label>
-              <input type="range" id="sigma-x" min="-500" max="500" value="100" oninput="document.getElementById('sx-val').textContent=this.value;">
+              <div class="field" style="margin-top:10px;">
+                <label>Load Case <span class="val" id="load-case-val">Tensile</span></label>
+                <select id="load-case">
+                  <option value="tensile">Tensile</option>
+                  <option value="bending">Bending</option>
+                  <option value="torsion">Torsion</option>
+                  <option value="combined">Combined</option>
+                  <option value="pressure">Pressure Vessel</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>σ_x (MPa) <span class="val" id="sx-val">100</span></label>
+                <input type="range" id="sigma-x" min="-500" max="500" value="100" oninput="document.getElementById('sx-val').textContent=this.value;">
+              </div>
+
+              <div class="field">
+                <label>σ_y (MPa) <span class="val" id="sy-val">50</span></label>
+                <input type="range" id="sigma-y" min="-500" max="500" value="50" oninput="document.getElementById('sy-val').textContent=this.value;">
+              </div>
+
+              <div class="field">
+                <label>σ_z (MPa) <span class="val" id="sz-val">20</span></label>
+                <input type="range" id="sigma-z" min="-500" max="500" value="20" oninput="document.getElementById('sz-val').textContent=this.value;">
+              </div>
+
+              <div class="field">
+                <label>τ_xy (MPa) <span class="val" id="txy-val">30</span></label>
+                <input type="range" id="tau-xy" min="-300" max="300" value="30" oninput="document.getElementById('txy-val').textContent=this.value;">
+              </div>
+
+              <div class="field">
+                <label>τ_yz (MPa) <span class="val" id="tyz-val">15</span></label>
+                <input type="range" id="tau-yz" min="-300" max="300" value="15" oninput="document.getElementById('tyz-val').textContent=this.value;">
+              </div>
+
+              <div class="field">
+                <label>τ_xz (MPa) <span class="val" id="txz-val">10</span></label>
+                <input type="range" id="tau-xz" min="-300" max="300" value="10" oninput="document.getElementById('txz-val').textContent=this.value;">
+              </div>
+
             </div>
-            <div class="field">
-              <label>σ_y (MPa) <span class="val" id="sy-val">50</span></label>
-              <input type="range" id="sigma-y" min="-500" max="500" value="50" oninput="document.getElementById('sy-val').textContent=this.value;">
-            </div>
-            <div class="field">
-              <label>σ_z (MPa) <span class="val" id="sz-val">20</span></label>
-              <input type="range" id="sigma-z" min="-500" max="500" value="20" oninput="document.getElementById('sz-val').textContent=this.value;">
-            </div>
-            <div class="field">
-              <label>τ_xy (MPa) <span class="val" id="txy-val">30</span></label>
-              <input type="range" id="tau-xy" min="-300" max="300" value="30" oninput="document.getElementById('txy-val').textContent=this.value;">
-            </div>
-            <div class="field">
-              <label>τ_yz (MPa) <span class="val" id="tyz-val">15</span></label>
-              <input type="range" id="tau-yz" min="-300" max="300" value="15" oninput="document.getElementById('tyz-val').textContent=this.value;">
-            </div>
-            <div class="field">
-              <label>τ_xz (MPa) <span class="val" id="txz-val">10</span></label>
-              <input type="range" id="tau-xz" min="-300" max="300" value="10" oninput="document.getElementById('txz-val').textContent=this.value;">
-            </div>
-          </div>
+
             <div style="font-size: 10px; color: #888; margin-top: 5px">
               * Red indicates high simulated stress
             </div>

@@ -58,17 +58,19 @@ export interface AppElements {
   sxValue: HTMLLabelElement | null;
   syValue: HTMLLabelElement | null;
   szValue: HTMLLabelElement | null;
-  txValue: HTMLLabelElement | null;
-  tyValue: HTMLLabelElement | null;
-  tzValue: HTMLLabelElement | null;
+  txyValue: HTMLLabelElement | null;
+  tyzValue: HTMLLabelElement | null;
+  txzValue: HTMLLabelElement | null;
 
   sxSlider: HTMLInputElement | null;
   sySlider: HTMLInputElement | null;
   szSlider: HTMLInputElement | null;
-  txSlider: HTMLInputElement | null;
-  tySlider: HTMLInputElement | null;
-  tzSlider: HTMLInputElement | null;
+  txySlider: HTMLInputElement | null;
+  tyzSlider: HTMLInputElement | null;
+  txzSlider: HTMLInputElement | null;
 
+  loadCaseSelector: HTMLSelectElement | null;
+  loadCaseValue: HTMLSpanElement | null;
 }
 
 function byId<T extends HTMLElement>(id: string): T | null {
@@ -142,18 +144,21 @@ export function getAppElements(): AppElements {
     btnCreateUser: byId<HTMLButtonElement>("btnCreateUser"),
     createUserStatus: byId("createUserStatus"),
 
-    sxValue: byId<HTMLLabelElement>("sx-value"),
-    syValue: byId<HTMLLabelElement>("sy-value"),
-    szValue: byId<HTMLLabelElement>("sz-value"),
-    txValue: byId<HTMLLabelElement>("tx-value"),
-    tyValue: byId<HTMLLabelElement>("ty-value"),
-    tzValue: byId<HTMLLabelElement>("tz-value"),
+    sxValue: byId<HTMLLabelElement>("sx-val"),
+    syValue: byId<HTMLLabelElement>("sy-val"),
+    szValue: byId<HTMLLabelElement>("sz-val"),
+    txyValue: byId<HTMLLabelElement>("txy-val"),
+    tyzValue: byId<HTMLLabelElement>("tyz-val"),
+    txzValue: byId<HTMLLabelElement>("txz-val"),
 
     sxSlider: byId<HTMLInputElement>("sigma-x"),
     sySlider: byId<HTMLInputElement>("sigma-y"),
     szSlider: byId<HTMLInputElement>("sigma-z"),
-    txSlider: byId<HTMLInputElement>("tau-x"),
-    tySlider: byId<HTMLInputElement>("tau-y"),
-    tzSlider: byId<HTMLInputElement>("tau-z"),
+    txySlider: byId<HTMLInputElement>("tau-xy"),
+    tyzSlider: byId<HTMLInputElement>("tau-yz"),
+    txzSlider: byId<HTMLInputElement>("tau-xz"),
+
+    loadCaseSelector: byId<HTMLSelectElement>("load-case"),
+    loadCaseValue: byId<HTMLSpanElement>("load-case-val")
   };
 }

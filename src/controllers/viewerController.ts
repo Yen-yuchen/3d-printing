@@ -42,7 +42,7 @@ export class ViewerController {
     this.loader = loader;
   }
 
-  public init(): void {
+  public init(): void { 
     this.elements.gridToggle?.addEventListener("change", () => {
       applyHelperVisibility(this.sceneManager, this.elements);
     });
@@ -80,7 +80,7 @@ export class ViewerController {
     // });
 
     this.elements.sxSlider?.addEventListener("input", (event) => {
-      console.log("hello")
+      //console.log("hello")
       if(this.elements.sxValue && this.elements.sxSlider){
         this.elements.sxValue.textContent = this.elements.sxSlider.value;
       }
@@ -100,34 +100,44 @@ export class ViewerController {
       applySimulatedVonMises(this.viewerState);
 
     })
-    this.elements.txSlider?.addEventListener("input", (event) => {
-      if(this.elements.txValue && this.elements.txSlider){
-        this.elements.txValue.textContent = this.elements.txSlider.value;
+    this.elements.txySlider?.addEventListener("input", (event) => {
+      if(this.elements.txyValue && this.elements.txySlider){
+        this.elements.txyValue.textContent = this.elements.txySlider.value;
       }
+      console.log("a")
       applySimulatedVonMises(this.viewerState);
       /*
       MOVE SLIDER EVENT LISTENER CODE HERE!!
       */
     })
-    this.elements.tySlider?.addEventListener("input", (event) => {
-      if(this.elements.tyValue && this.elements.tySlider){
-        this.elements.tyValue.textContent = this.elements.tySlider.value;
+    this.elements.tyzSlider?.addEventListener("input", (event) => {
+      if(this.elements.tyzValue && this.elements.tyzSlider){
+        this.elements.tyzValue.textContent = this.elements.tyzSlider.value;
       }
+      console.log("b")
       applySimulatedVonMises(this.viewerState);
       /*
       MOVE SLIDER EVENT LISTENER CODE HERE!!
       */
     })
-    this.elements.tzSlider?.addEventListener("input", (event) => {
-      if(this.elements.tzValue && this.elements.tzSlider){
-        this.elements.tzValue.textContent = this.elements.tzSlider.value;
+    this.elements.txzSlider?.addEventListener("input", (event) => {
+      if(this.elements.txzValue && this.elements.txzSlider){
+        this.elements.txzValue.textContent = this.elements.txzSlider.value;
       }
+      console.log("c")
       applySimulatedVonMises(this.viewerState);
       /*
       MOVE SLIDER EVENT LISTENER CODE HERE!!
       */
     })
-
+    
+    this.elements.loadCaseSelector?.addEventListener("change", (event) => {
+      const caseSelector = this.elements.loadCaseSelector;
+      const caseValue = this.elements.loadCaseValue;
+      if(caseValue && caseSelector){
+        caseValue.textContent = caseSelector.options[caseSelector.selectedIndex].text
+      }
+    })
     // Refresh list immediately on login/logout
     window.addEventListener("auth:changed", () => {
       void this.loadSavedModels();
