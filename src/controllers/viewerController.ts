@@ -17,6 +17,7 @@ import {
 } from "../services/modelService";
 import { renderSavedModels } from "../views/saveModelsView";
 import { setStatus } from "../views/statusView";
+import { applySimulatedVonMises } from "../three/stressAnalysis";
 
 type SavedModelOpenDetail = { modelId: number };
 
@@ -41,7 +42,7 @@ export class ViewerController {
     this.loader = loader;
   }
 
-  public init(): void {
+  public init(): void { 
     this.elements.gridToggle?.addEventListener("change", () => {
       applyHelperVisibility(this.sceneManager, this.elements);
     });
@@ -74,10 +75,69 @@ export class ViewerController {
       );
     });
 
-    this.elements.viewer.addEventListener("click", () => {
-      applyDensityHeatmap(this.viewerState);
-    });
+    // this.elements.viewer.addEventListener("click", () => {
+    //   applyDensityHeatmap(this.viewerState);
+    // });
 
+    this.elements.sxSlider?.addEventListener("input", (event) => {
+      //console.log("hello")
+      if(this.elements.sxValue && this.elements.sxSlider){
+        this.elements.sxValue.textContent = this.elements.sxSlider.value;
+      }
+      applySimulatedVonMises(this.viewerState);
+    })
+    this.elements.sySlider?.addEventListener("input", (event) => {
+      if(this.elements.syValue && this.elements.sySlider){
+        this.elements.syValue.textContent = this.elements.sySlider.value;
+      }
+      applySimulatedVonMises(this.viewerState);
+
+    })
+    this.elements.szSlider?.addEventListener("input", (event) => {
+      if(this.elements.szValue && this.elements.szSlider){
+        this.elements.szValue.textContent = this.elements.szSlider.value;
+      }
+      applySimulatedVonMises(this.viewerState);
+
+    })
+    this.elements.txySlider?.addEventListener("input", (event) => {
+      if(this.elements.txyValue && this.elements.txySlider){
+        this.elements.txyValue.textContent = this.elements.txySlider.value;
+      }
+      console.log("a")
+      applySimulatedVonMises(this.viewerState);
+      /*
+      MOVE SLIDER EVENT LISTENER CODE HERE!!
+      */
+    })
+    this.elements.tyzSlider?.addEventListener("input", (event) => {
+      if(this.elements.tyzValue && this.elements.tyzSlider){
+        this.elements.tyzValue.textContent = this.elements.tyzSlider.value;
+      }
+      console.log("b")
+      applySimulatedVonMises(this.viewerState);
+      /*
+      MOVE SLIDER EVENT LISTENER CODE HERE!!
+      */
+    })
+    this.elements.txzSlider?.addEventListener("input", (event) => {
+      if(this.elements.txzValue && this.elements.txzSlider){
+        this.elements.txzValue.textContent = this.elements.txzSlider.value;
+      }
+      console.log("c")
+      applySimulatedVonMises(this.viewerState);
+      /*
+      MOVE SLIDER EVENT LISTENER CODE HERE!!
+      */
+    })
+    
+    this.elements.loadCaseSelector?.addEventListener("change", (event) => {
+      const caseSelector = this.elements.loadCaseSelector;
+      const caseValue = this.elements.loadCaseValue;
+      if(caseValue && caseSelector){
+        caseValue.textContent = caseSelector.options[caseSelector.selectedIndex].text
+      }
+    })
     // Refresh list immediately on login/logout
     window.addEventListener("auth:changed", () => {
       void this.loadSavedModels();
@@ -99,6 +159,7 @@ export class ViewerController {
 
     void this.loadSavedModels();
   }
+
 
   public async refreshSavedModels(): Promise<void> {
     await this.loadSavedModels();
