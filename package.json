@@ -8,7 +8,8 @@
     "localtest": "vite",
     "build": "npm --prefix server run build && tsc && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -16,9 +17,9 @@
     "@types/three": "^0.182.0",
     "concurrently": "^9.2.1",
     "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0",
     "three": "^0.182.0",
     "ts-jest": "^29.4.6",
-    "typedoc": "^0.28.18",
     "typescript": "~5.9.3",
     "vite": "^7.2.4"
   },
