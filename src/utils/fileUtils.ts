@@ -33,3 +33,21 @@ export function downloadFile(data: BlobPart, filename: string, mimeType: string)
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+// src/utils/fileUtils.ts
+
+/**
+ * convert all kinds of path-like strings to just the file extension, in lowercase. If no extension, return empty string.
+ */
+export function getFileExtension(filename: string): string {
+  if (!filename.includes('.')) return "";
+  return filename.split('.').pop()?.toLowerCase() || "";
+}
+
+/**
+ *check if the file extension is one of the supported 3D model formats: obj, glb, gltf, stl. Case-insensitive. If no extension, return false.
+ */
+export function isValidModelFormat(filename: string): boolean {
+  const ext = getFileExtension(filename);
+  return ["obj", "glb", "gltf", "stl"].includes(ext);
+}

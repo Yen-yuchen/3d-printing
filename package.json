@@ -7,7 +7,8 @@
     "dev": "concurrently -n client,server -c auto \"vite\" \"npm --prefix server run dev\"",
     "localtest": "vite",
     "build": "npm --prefix server run build && tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
