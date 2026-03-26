@@ -17,6 +17,7 @@ import {
 } from "../services/modelService";
 import { renderSavedModels } from "../views/saveModelsView";
 import { setStatus } from "../views/statusView";
+import { applySimulatedVonMises } from "../three/stressAnalysis";
 
 type SavedModelOpenDetail = { modelId: number };
 
@@ -78,6 +79,55 @@ export class ViewerController {
     //   applyDensityHeatmap(this.viewerState);
     // });
 
+    this.elements.sxSlider?.addEventListener("input", (event) => {
+      console.log("hello")
+      if(this.elements.sxValue && this.elements.sxSlider){
+        this.elements.sxValue.textContent = this.elements.sxSlider.value;
+      }
+      applySimulatedVonMises(this.viewerState);
+    })
+    this.elements.sySlider?.addEventListener("input", (event) => {
+      if(this.elements.syValue && this.elements.sySlider){
+        this.elements.syValue.textContent = this.elements.sySlider.value;
+      }
+      applySimulatedVonMises(this.viewerState);
+
+    })
+    this.elements.szSlider?.addEventListener("input", (event) => {
+      if(this.elements.szValue && this.elements.szSlider){
+        this.elements.szValue.textContent = this.elements.szSlider.value;
+      }
+      applySimulatedVonMises(this.viewerState);
+
+    })
+    this.elements.txSlider?.addEventListener("input", (event) => {
+      if(this.elements.txValue && this.elements.txSlider){
+        this.elements.txValue.textContent = this.elements.txSlider.value;
+      }
+      applySimulatedVonMises(this.viewerState);
+      /*
+      MOVE SLIDER EVENT LISTENER CODE HERE!!
+      */
+    })
+    this.elements.tySlider?.addEventListener("input", (event) => {
+      if(this.elements.tyValue && this.elements.tySlider){
+        this.elements.tyValue.textContent = this.elements.tySlider.value;
+      }
+      applySimulatedVonMises(this.viewerState);
+      /*
+      MOVE SLIDER EVENT LISTENER CODE HERE!!
+      */
+    })
+    this.elements.tzSlider?.addEventListener("input", (event) => {
+      if(this.elements.tzValue && this.elements.tzSlider){
+        this.elements.tzValue.textContent = this.elements.tzSlider.value;
+      }
+      applySimulatedVonMises(this.viewerState);
+      /*
+      MOVE SLIDER EVENT LISTENER CODE HERE!!
+      */
+    })
+
     // Refresh list immediately on login/logout
     window.addEventListener("auth:changed", () => {
       void this.loadSavedModels();
@@ -99,6 +149,7 @@ export class ViewerController {
 
     void this.loadSavedModels();
   }
+
 
   public async refreshSavedModels(): Promise<void> {
     await this.loadSavedModels();
