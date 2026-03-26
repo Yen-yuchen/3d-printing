@@ -130,6 +130,14 @@ export class ViewerController {
       MOVE SLIDER EVENT LISTENER CODE HERE!!
       */
     })
+    if(this.elements.shapeButtons){
+      for(let button of this.elements.shapeButtons){
+        button.addEventListener("click", (event) => {
+          this.sceneManager.changeShape(button.value);
+        })
+      }
+    }
+
     
     this.elements.loadCaseSelector?.addEventListener("change", (event) => {
       const caseSelector = this.elements.loadCaseSelector;

@@ -6,7 +6,7 @@ import { createControls } from "./controlsManager";
 import {
   addDefaultLights,
   createAxesHelper,
-  createDemoCube,
+  createNewShape,
   createGridHelper,
   createScene,
 } from "./viewerHelpers";
@@ -17,7 +17,7 @@ export class SceneManager {
   public readonly camera: THREE.PerspectiveCamera;
   public readonly renderer: THREE.WebGLRenderer;
   public readonly controls: OrbitControls;
-  public readonly cube: THREE.Mesh;
+  public readonly shape: THREE.Mesh;
   public readonly gridHelper: THREE.GridHelper;
   public readonly axesHelper: THREE.AxesHelper;
   private readonly viewer: HTMLDivElement;
@@ -31,13 +31,31 @@ export class SceneManager {
 
     addDefaultLights(this.scene);
 
-    this.cube = createDemoCube();
-    this.scene.add(this.cube);
+    this.shape = createNewShape("cube");
+    this.scene.add(this.shape);
 
     this.gridHelper = createGridHelper();
     this.axesHelper = createAxesHelper();
     this.scene.add(this.gridHelper);
     this.scene.add(this.axesHelper);
+  }
+  public changeShape(shapeName: string): void {
+    console.log("chang shap");
+    
+    let newShape: THREE.Mesh = createNewShape(shapeName);
+    if(this.shape.geometry){
+      this.shape.geometry.dispose();
+    }
+    if(Array.isArray(this.shape.material)){
+      this.shape.material.forEach((material) => {
+        material.dispose()
+      })
+    } else{
+      this.shape.material.dispose()
+    }
+    this.shape.material = newShape.material;
+    this.shape.geometry = newShape.geometry;
+    this.scene.add(this.shape);
   }
 
   public setBackground(colorHex: string): void {

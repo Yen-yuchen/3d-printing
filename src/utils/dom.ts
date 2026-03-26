@@ -71,11 +71,18 @@ export interface AppElements {
 
   loadCaseSelector: HTMLSelectElement | null;
   loadCaseValue: HTMLSpanElement | null;
+
+  shapeButtons: HTMLCollectionOf<HTMLButtonElement> | null;
 }
 
 function byId<T extends HTMLElement>(id: string): T | null {
   return document.getElementById(id) as T | null;
 }
+
+function byClass<T extends HTMLElement>(className: string): HTMLCollectionOf<T>  | null {
+  return document.getElementsByClassName(className) as HTMLCollectionOf<T> |  null;
+}
+
 
 export function getRequiredElement<T extends HTMLElement>(id: string): T {
   const element = byId<T>(id);
@@ -159,6 +166,8 @@ export function getAppElements(): AppElements {
     txzSlider: byId<HTMLInputElement>("tau-xz"),
 
     loadCaseSelector: byId<HTMLSelectElement>("load-case"),
-    loadCaseValue: byId<HTMLSpanElement>("load-case-val")
+    loadCaseValue: byId<HTMLSpanElement>("load-case-val"),
+
+    shapeButtons: byClass<HTMLButtonElement>("shape-buttons")
   };
 }

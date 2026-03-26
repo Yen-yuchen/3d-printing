@@ -112,7 +112,7 @@ export class ModelLoaderService {
 
     mergeModelVertices(object);
     this.sceneManager.scene.add(object);
-    this.sceneManager.cube.visible = false;
+    this.sceneManager.shape.visible = false;
 
     applyModelVisibility(this.state, this.sceneManager, this.elements);
     applyHelperVisibility(this.sceneManager, this.elements);

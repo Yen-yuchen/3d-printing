@@ -27,7 +27,7 @@ export function getTargetObject(
   state: ViewerState,
   sceneManager: SceneManager,
 ): THREE.Object3D {
-  return state.currentModel ?? sceneManager.cube;
+  return state.currentModel ?? sceneManager.shape;
 }
 
 // Merges duplicate vertices in all meshes of an object to optimize geometry
@@ -83,7 +83,7 @@ export function applyModelVisibility(
 ): void {
   const showModel = elements.modelToggle?.checked ?? true;
   if (state.currentModel) state.currentModel.visible = showModel;
-  sceneManager.cube.visible = !state.currentModel && showModel;
+  sceneManager.shape.visible = !state.currentModel && showModel;
 }
 
 // Scales the target object (model or cube) based on the slider value
