@@ -614,89 +614,90 @@ if (bgColorPicker) {
 // Density Visualization: Click on model to visualize face density
 // Calculates surface area density at each vertex using face information
 // Used by: Viewer canvas click event
-viewer.addEventListener("click", () => {
-    let mesh = getMesh(currentModel);
-    if (mesh) {
-        if (mesh.geometry.isBufferGeometry) {
-            const position = mesh.geometry.attributes.position;
-            const index = mesh.geometry.index;
+// viewer.addEventListener("click", () => {
+//     let mesh = getMesh(currentModel);
+//     if (mesh) {
+//         if (mesh.geometry.isBufferGeometry) {
+//             const position = mesh.geometry.attributes.position;
+//             const index = mesh.geometry.index;
             
-            if (position && index) {
-                const vertexCount = position.count;
-                const density: number[] = new Array(vertexCount).fill(0);
-                const numFaces: number[] = new Array(vertexCount).fill(0);
+//             if (position && index) {
+//                 const vertexCount = position.count;
+//                 const density: number[] = new Array(vertexCount).fill(0);
+//                 const numFaces: number[] = new Array(vertexCount).fill(0);
 
                
 
-                for (let j = 0; j < index.count; j += 3) {
-                    const aIndex = index.getX(j);
-                    const bIndex = index.getY(j);
-                    const cIndex = index.getZ(j);
+//                 for (let j = 0; j < index.count; j += 3) {
+//                     const aIndex = index.getX(j);
+//                     const bIndex = index.getY(j);
+//                     const cIndex = index.getZ(j);
 
-                    const a = new THREE.Vector3(position.getX(aIndex),position.getY(aIndex),position.getZ(aIndex));
-                    const b = new THREE.Vector3(position.getX(bIndex),position.getY(cIndex),position.getZ(bIndex));
-                    const c = new THREE.Vector3(position.getX(cIndex),position.getY(cIndex),position.getZ(cIndex));
-                    const ab = b.sub(a);
-                    const ac = c.sub(a);
-                    const faceDensity = ab.cross(ac).length();
+//                     const a = new THREE.Vector3(position.getX(aIndex),position.getY(aIndex),position.getZ(aIndex));
+//                     const b = new THREE.Vector3(position.getX(bIndex),position.getY(cIndex),position.getZ(bIndex));
+//                     const c = new THREE.Vector3(position.getX(cIndex),position.getY(cIndex),position.getZ(cIndex));
+//                     const ab = b.sub(a);
+//                     const ac = c.sub(a);
+//                     const faceDensity = ab.cross(ac).length();
 
 
-                    numFaces[aIndex]++;
-                    numFaces[bIndex]++;
-                    numFaces[cIndex]++;
+//                     numFaces[aIndex]++;
+//                     numFaces[bIndex]++;
+//                     numFaces[cIndex]++;
 
-                    density[aIndex] += faceDensity;
-                    density[bIndex] += faceDensity;
-                    density[cIndex] += faceDensity;
+//                     density[aIndex] += faceDensity;
+//                     density[bIndex] += faceDensity;
+//                     density[cIndex] += faceDensity;
 
                    
                     
 
-                }
-                let maxDensity = -Infinity;
-                let minDensity = Infinity;
-                for(let j = 0; j < numFaces.length; j++){
-                    if(numFaces[j] > 0){
-                      density[j] /= numFaces[j];
-                    }
+//                 }
+//                 let maxDensity = -Infinity;
+//                 let minDensity = Infinity;
+//                 for(let j = 0; j < numFaces.length; j++){
+//                     if(numFaces[j] > 0){
+//                       density[j] /= numFaces[j];
+//                     }
 
-                    if(density[j] > maxDensity){
-                      maxDensity = density[j];
-                    } if(density[j] < minDensity){
-                      minDensity = density[j];
-                    }
-                }
+//                     if(density[j] > maxDensity){
+//                       maxDensity = density[j];
+//                     } if(density[j] < minDensity){
+//                       minDensity = density[j];
+//                     }
+//                 }
 
 
-                console.log("MAX FACE (Density): ", maxDensity);
-                console.log("MIN FACE (Density): ", minDensity);
+//                 console.log("MAX FACE (Density): ", maxDensity);
+//                 console.log("MIN FACE (Density): ", minDensity);
 
-                const colors = [];
-                const color = new THREE.Color();
+//                 const colors = [];
+//                 const color = new THREE.Color();
                 
-                for (let i = 0; i < vertexCount; i++) {
-                    let heatValue = 0;
-                    if (maxDensity != minDensity) {
-                        heatValue = (density[i] - minDensity) / (maxDensity - minDensity);
-                    }
+//                 for (let i = 0; i < vertexCount; i++) {
+//                     let heatValue = 0;
+//                     if (maxDensity != minDensity) {
+//                         heatValue = (density[i] - minDensity) / (maxDensity - minDensity);
+//                     }
 
-                    color.setHSL((heatValue) * 0.66, 1.0, 0.5); 
-                    if(heatValue > 1 && heatValue < 0){
-                      console.log("bad heat value");
-                    }
-                    colors.push(color.r, color.g, color.b);
-                }
+//                     color.setHSL((heatValue) * 0.66, 1.0, 0.5); 
+//                     if(heatValue > 1 && heatValue < 0){
+//                       console.log("bad heat value");
+//                     }
+//                     colors.push(color.r, color.g, color.b);
+//                 }
 
-                mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-                const material = mesh.material as THREE.MeshStandardMaterial;
-                material.vertexColors = true;
-                material.needsUpdate = true;
-            } else {
-                console.warn("");
-            }
-        }
-    }
-});
+//                 mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+//                 const material = mesh.material as THREE.MeshStandardMaterial;
+//                 material.vertexColors = true;
+//                 material.needsUpdate = true;
+//             } else {
+//                 console.warn("");
+//             }
+//         }
+//     }
+//     console.log("hello")
+// });
 
 // Utility: Recursively finds first mesh in object hierarchy
 // Used by: Density visualization and other mesh operations
