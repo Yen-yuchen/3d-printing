@@ -84,20 +84,20 @@ export class ViewerController {
       if(this.elements.sxValue && this.elements.sxSlider){
         this.elements.sxValue.textContent = this.elements.sxSlider.value;
       }
-      applySimulatedVonMises(this.viewerState);
+      applySimulatedVonMises(this.viewerState, this.sceneManager);
     })
     this.elements.sySlider?.addEventListener("input", (event) => {
       if(this.elements.syValue && this.elements.sySlider){
         this.elements.syValue.textContent = this.elements.sySlider.value;
       }
-      applySimulatedVonMises(this.viewerState);
+      applySimulatedVonMises(this.viewerState, this.sceneManager);
 
     })
     this.elements.szSlider?.addEventListener("input", (event) => {
       if(this.elements.szValue && this.elements.szSlider){
         this.elements.szValue.textContent = this.elements.szSlider.value;
       }
-      applySimulatedVonMises(this.viewerState);
+      applySimulatedVonMises(this.viewerState, this.sceneManager);
 
     })
     this.elements.txySlider?.addEventListener("input", (event) => {
@@ -105,7 +105,7 @@ export class ViewerController {
         this.elements.txyValue.textContent = this.elements.txySlider.value;
       }
       console.log("a")
-      applySimulatedVonMises(this.viewerState);
+      applySimulatedVonMises(this.viewerState, this.sceneManager);
       /*
       MOVE SLIDER EVENT LISTENER CODE HERE!!
       */
@@ -115,7 +115,7 @@ export class ViewerController {
         this.elements.tyzValue.textContent = this.elements.tyzSlider.value;
       }
       console.log("b")
-      applySimulatedVonMises(this.viewerState);
+      applySimulatedVonMises(this.viewerState, this.sceneManager);
       /*
       MOVE SLIDER EVENT LISTENER CODE HERE!!
       */
@@ -125,7 +125,7 @@ export class ViewerController {
         this.elements.txzValue.textContent = this.elements.txzSlider.value;
       }
       console.log("c")
-      applySimulatedVonMises(this.viewerState);
+      applySimulatedVonMises(this.viewerState, this.sceneManager);
       /*
       MOVE SLIDER EVENT LISTENER CODE HERE!!
       */

@@ -113,7 +113,7 @@ export class MeshController {
         this.elements.statusEl,
         "Computing Von Mises Stress (Simulated)...",
       );
-      applySimulatedVonMises(this.viewerState);
+      applySimulatedVonMises(this.viewerState, this.sceneManager);;
       setStatus(
         this.elements.statusEl,
         "Von Mises Analysis Complete: Red = High Stress",
