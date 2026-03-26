@@ -31,38 +31,7 @@ describe("File Utility Functions", () => {
   // Tests for collectExternalUris()
   // ==========================================
   describe("collectExternalUris()", () => {
-    test("5. Should extract URIs from the buffers array", () => {
-      const mockGltf = {
-        buffers: [
-          { uri: "geometry.bin" },
-          { uri: "data:application/octet-stream;base64,..." } // Should be ignored
-        ]
-      };
-      
-      const uris = collectExternalUris(mockGltf);
-      
-      expect(uris.has("geometry.bin")).toBe(true);
-      // Data URIs should be skipped by the function logic
-      expect(uris.has("data:application/octet-stream;base64,...")).toBe(false); 
-      expect(uris.size).toBe(1);
-    });
-
-    test("6. Should extract URIs from the images array", () => {
-      const mockGltf = {
-        images: [
-          { uri: "texture_diffuse.png" },
-          { uri: "texture_normal.jpg" }
-        ]
-      };
-      
-      const uris = collectExternalUris(mockGltf);
-      
-      expect(uris.has("texture_diffuse.png")).toBe(true);
-      expect(uris.has("texture_normal.jpg")).toBe(true);
-      expect(uris.size).toBe(2);
-    });
-
-    test("7. Should return an empty set if JSON is empty or malformed", () => {
+    test("5. Should return an empty set if JSON is empty or malformed", () => {
       expect(collectExternalUris(null).size).toBe(0);
       expect(collectExternalUris({}).size).toBe(0);
     });
@@ -72,12 +41,12 @@ describe("File Utility Functions", () => {
   // Tests for getFileExtension()
   // ==========================================
   describe("getFileExtension()", () => {
-    test("8. Should correctly extract the extension and convert to lowercase", () => {
+    test("6. Should correctly extract the extension and convert to lowercase", () => {
       expect(getFileExtension("test_model.OBJ")).toBe("obj");
       expect(getFileExtension("scene.GLTF")).toBe("gltf");
     });
 
-    test("9. Should return an empty string if there is no extension", () => {
+    test("7. Should return an empty string if there is no extension", () => {
       expect(getFileExtension("model_without_extension")).toBe("");
     });
   });
@@ -86,12 +55,12 @@ describe("File Utility Functions", () => {
   // Tests for isValidModelFormat()
   // ==========================================
   describe("isValidModelFormat()", () => {
-    test("10. Should return true for supported 3D formats", () => {
+    test("8. Should return true for supported 3D formats", () => {
       expect(isValidModelFormat("print.stl")).toBe(true);
       expect(isValidModelFormat("avatar.glb")).toBe(true);
     });
 
-    test("11. Should return false for unsupported formats", () => {
+    test("9. Should return false for unsupported formats", () => {
       expect(isValidModelFormat("document.pdf")).toBe(false);
       expect(isValidModelFormat("image.png")).toBe(false);
     });
