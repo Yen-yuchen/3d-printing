@@ -1,13 +1,20 @@
 import * as THREE from "three";
 import type { ViewerState } from "../state/viewerState";
 import { getAppElements, type AppElements } from "../utils/dom";
+import { SceneManager } from "./sceneManager";
 
-export function applySimulatedVonMises(state: ViewerState): void {
+export function applySimulatedVonMises(state: ViewerState, sceneManager: SceneManager): void {
   console.log("hello")
-  if (!state.currentModel) return;
+  let model = state.currentModel; 
+  if (!state.currentModel){
+    model = sceneManager.shape;
+  }
+  if(!model){
+    return;
+  }
     
 
-  state.currentModel.traverse((child) => {
+  model.traverse((child) => {
     if (!(child as THREE.Mesh).isMesh) return;
     const mesh = child as THREE.Mesh;
     const geometry = mesh.geometry;
