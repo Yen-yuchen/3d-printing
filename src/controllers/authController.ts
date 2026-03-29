@@ -11,11 +11,33 @@ import {
 } from "../services/authService";
 import { createUser } from "../services/userService";
 
+/**
+ * Controller responsible for authentication-related UI actions.
+ *
+ * This controller manages:
+ * - restoring stored login state
+ * - username/password login
+ * - email-based login
+ * - logout
+ * - user creation
+ * - re-rendering auth-dependent UI
+ *
+ * It also coordinates with viewer state so that actions like saving
+ * a model are enabled only when the user is authenticated and a model
+ * is currently loaded.
+ */
 export class AuthController {
   private readonly authState: AuthState;
   private readonly viewerState: ViewerState;
   private readonly elements: AppElements;
 
+  /**
+   * Creates a new AuthController.
+   *
+   * @param authState - Shared authentication state for the application
+   * @param viewerState - Shared viewer state used to determine save availability
+   * @param elements - Cached DOM references used by auth-related UI
+   */
   constructor(
     authState: AuthState,
     viewerState: ViewerState,
@@ -26,6 +48,16 @@ export class AuthController {
     this.elements = elements;
   }
 
+  /**
+   * Initializes authentication UI event handlers and restores
+   * any previously saved authentication state from storage.
+   *
+   * Registered actions include:
+   * - admin/dev login
+   * - email login
+   * - logout from either login section
+   * - create user
+   */
   public init(): void {
     const stored = readStoredAuth();
     this.authState.token = stored.token;
@@ -120,6 +152,13 @@ export class AuthController {
     });
   }
 
+  /**
+   * Re-renders authentication-related UI and updates save button state.
+   *
+   * Save is enabled only when:
+   * - a valid auth token exists
+   * - a model has been loaded into the viewer
+   */
   public render(): void {
     renderAuthUI(this.elements, this.authState);
     updateSaveButtonState(
@@ -129,10 +168,22 @@ export class AuthController {
     );
   }
 
+  /**
+   * Returns the currently stored auth token.
+   *
+   * @returns JWT or login token, or null if not logged in
+   */
   public getToken(): string | null {
     return this.authState.token;
   }
 
+  /**
+   * Writes authentication data to persistent storage, updates shared state,
+   * re-renders the UI, and emits an application-wide auth change event.
+   *
+   * @param token - Newly issued auth token, or null to clear auth
+   * @param username - Optional username or email associated with the token
+   */
   private setAuth(token: string | null, username?: string | null): void {
     const next = writeStoredAuth(token, username);
     this.authState.token = next.token;
@@ -140,10 +191,16 @@ export class AuthController {
 
     this.render();
 
-    // Let other controllers (saved models list) refresh immediately.
+    /**
+     * Notify other controllers that authentication changed so they can
+     * refresh protected UI such as saved model lists.
+     */
     window.dispatchEvent(new CustomEvent("auth:changed"));
   }
 
+  /**
+   * Clears the current authentication state and stored credentials.
+   */
   private clearAuth(): void {
     this.setAuth(null);
   }
