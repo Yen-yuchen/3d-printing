@@ -126,7 +126,14 @@ export function exportCorrectedModel(
     onStatus(`Failed to export ${exporterType.toUpperCase()}`);
   }
 }
-
+/**
+ * Saves the current model locally by uploading it to the server.
+ * @param state - The current viewer state containing the `currentModel` to save.
+ * @param fileName - The name for the saved file.
+ * @param token - The authentication token for the API request.
+ * @param onStatus - A callback function to report save progress or errors.
+ * @returns 
+ */
 export function saveModelLocally(
   state: ViewerState,
   fileName: string,

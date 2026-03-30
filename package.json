@@ -9,7 +9,8 @@
     "build": "npm --prefix server run build && tsc && vite build",
     "preview": "vite preview",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "docs": "typedoc --entryPointStrategy expand ./src"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
