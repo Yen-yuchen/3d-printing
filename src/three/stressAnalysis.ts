@@ -85,17 +85,14 @@ export function applySimulatedVonMises(state: ViewerState, sceneManager: SceneMa
       colors[i * 3 + 1] = color.g;
       colors[i * 3 + 2] = color.b;
     }
-
+    
     geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    mesh.material = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: 0.5,
-      metalness: 0.1,
-    });
+   
+    
   });
 }
 
-function calcVonMises(sx: number, sy: number, sz: number, txy: number, tyz: number, txz: number): number{
+export function calcVonMises(sx: number, sy: number, sz: number, txy: number, tyz: number, txz: number): number{
   return Math.sqrt(0.5 * (
     Math.pow(sx - sy, 2) +
     Math.pow(sy - sz, 2) +
@@ -104,7 +101,7 @@ function calcVonMises(sx: number, sy: number, sz: number, txy: number, tyz: numb
   ));
 }
 
-function stressAtPoint(
+export function stressAtPoint(
   x: number, y: number, z: number, 
   sx: number, sy: number, sz: number, 
   txy: number, tyz: number, txz: number, 
