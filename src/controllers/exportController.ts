@@ -1,8 +1,9 @@
 /**
- * Controller responsible for wiring export UI buttons to the export logic.
+ * Controller responsible for wiring export UI buttons to export logic.
  *
- * This controller does not perform export itself; it delegates to
- * `exportCorrectedModel` in `three/modelExporter`.
+ * This controller does not perform export itself. Instead, it delegates to:
+ * - exportCorrectedModel for client-side file export
+ * - saveModelLocally for authenticated local/server-side saving
  */
 import type { ViewerState } from "../state/viewerState";
 import type { AppElements } from "../utils/dom";
@@ -16,6 +17,13 @@ export class ExportController {
   private readonly elements: AppElements;
   private readonly authState: AuthState;
 
+  /**
+   * Creates a new ExportController.
+   *
+   * @param viewerState - Shared viewer/model state used during export
+   * @param elements - Cached DOM references for export-related controls
+   * @param authState - Shared auth state used to validate save access
+   */
   constructor(
     viewerState: ViewerState,
     elements: AppElements,
@@ -26,6 +34,14 @@ export class ExportController {
     this.authState = authState;
   }
 
+  /**
+   * Initializes export-related UI event handlers.
+   *
+   * Supported actions:
+   * - export current model as GLB
+   * - export current model as OBJ
+   * - save current model through authenticated local save flow
+   */
   public init(): void {
     this.elements.btnExportGLB?.addEventListener("click", () => {
       exportCorrectedModel(this.viewerState, "glb", (message: string) => {
@@ -38,6 +54,7 @@ export class ExportController {
         setStatus(this.elements.statusEl, message);
       });
     });
+
     this.elements.btnLocalSave?.addEventListener("click", () => {
       const fileName =
         getAppElements().newModelNameInput?.value.trim() || "simplified_model";
