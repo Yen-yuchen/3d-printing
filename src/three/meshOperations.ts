@@ -19,6 +19,7 @@ import {
   traverseMeshes,
 } from "../utils/threeUtils";
 
+
 // Initialize the simplify modifier for mesh reduction
 const simplifyModifier = new SimplifyModifier();
 
@@ -423,3 +424,169 @@ export function performSubdivision(
   setStatus(elements.statusEl, "Subdivision complete");
 }
 
+// src/three/meshOperations.ts
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
+// ==========================================
+// 1. 核心兵工廠：將一般模型轉換成實體晶格 (Lattice)
+// ==========================================
+export function createPrintableWireframe(
+    originalGeometry: THREE.BufferGeometry, 
+    material: THREE.Material, 
+    thickness: number = 0.5
+): THREE.Mesh {
+    const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
+    const positionAttribute = edgesGeometry.attributes.position;
+    const geometriesToMerge: THREE.BufferGeometry[] = [];
+    const p1 = new THREE.Vector3();
+    const p2 = new THREE.Vector3();
+
+    // 針對每一條邊，生成一根有厚度的圓柱體
+    for (let i = 0; i < positionAttribute.count; i += 2) {
+        p1.fromBufferAttribute(positionAttribute, i);
+        p2.fromBufferAttribute(positionAttribute, i + 1);
+
+        const distance = p1.distanceTo(p2);
+        const cylinderGeo = new THREE.CylinderGeometry(thickness, thickness, distance, 8, 1, false);
+        
+        cylinderGeo.translate(0, distance / 2, 0);
+        cylinderGeo.rotateX(Math.PI / 2);
+
+        const matrix = new THREE.Matrix4();
+        matrix.lookAt(p2, p1, new THREE.Vector3(0, 1, 0));
+        matrix.setPosition(p1);
+        cylinderGeo.applyMatrix4(matrix);
+
+        geometriesToMerge.push(cylinderGeo);
+    }
+
+    // 針對每一個頂點，生成一顆球當作關節
+    const posGeo = originalGeometry.attributes.position;
+    const sphereGeoTemplate = new THREE.SphereGeometry(thickness * 1.05, 8, 8);
+    
+    for(let i = 0; i < posGeo.count; i++) {
+       const p = new THREE.Vector3().fromBufferAttribute(posGeo, i);
+       const sphere = sphereGeoTemplate.clone();
+       sphere.translate(p.x, p.y, p.z);
+       geometriesToMerge.push(sphere);
+    }
+
+    // 將所有小管子與小球合併，並套用傳進來的材質
+    const mergedGeo = mergeGeometries(geometriesToMerge);
+    return new THREE.Mesh(mergedGeo, material);
+}
+// ==========================================
+// 2. UI 綁定：具備「還原」切換功能的按鈕
+// ==========================================
+export function setupLatticeButton(state: any, sceneManager: any, elements: any) {
+  const latticeBtn = document.getElementById('generateLatticeBtn') as HTMLButtonElement;
+  
+  if (!latticeBtn) return;
+
+  latticeBtn.addEventListener('click', () => {
+    if (!state.currentModel) {
+      alert("Please load a model first!");
+      return;
+    }
+
+    // ==========================================
+    // 🔄 模式 2：如果現在已經是晶格，就執行「還原」！
+    // ==========================================
+    if (state.currentModel.userData.isLattice) {
+        // 1. 從百寶袋裡把原本的模型拿出來
+        const originalModel = state.currentModel.userData.originalModel;
+        
+        // 2. 把目前的晶格從場景移除，並銷毀它來釋放記憶體
+        const latticeMesh = state.currentModel as THREE.Mesh;
+        sceneManager.scene.remove(latticeMesh);
+        latticeMesh.geometry.dispose();
+        if (Array.isArray(latticeMesh.material)) {
+            latticeMesh.material.forEach(m => m.dispose());
+        } else {
+            (latticeMesh.material as THREE.Material).dispose();
+        }
+
+        // 3. 把原本的模型加回場景，並更新系統狀態
+        sceneManager.scene.add(originalModel);
+        state.currentModel = originalModel;
+
+        // 4. 恢復按鈕文字
+        latticeBtn.textContent = "Generate Lattice Wireframe";
+        
+        // 5. 更新頂點數量標籤
+        if (elements.polyCountLabel) {
+            const origMesh = getFirstMesh(originalModel);
+            if (origMesh && origMesh.geometry) {
+                elements.polyCountLabel.textContent = `Current Vertices: ${origMesh.geometry.attributes.position.count}`;
+            }
+        }
+        return; // 成功還原，直接提早結束！
+    }
+
+    // ==========================================
+    // ✨ 模式 1：生成全新的晶格結構
+    // ==========================================
+    latticeBtn.textContent = "Generating...";
+    latticeBtn.disabled = true;
+
+    setTimeout(() => {
+      try {
+        const currentMesh = getFirstMesh(state.currentModel);
+        
+        if (!currentMesh || !currentMesh.geometry) {
+            alert("Cannot find geometry in this model.");
+            return;
+        }
+
+        const latticeMaterial = new THREE.MeshStandardMaterial({
+          color: elements.modelColorPicker?.value ?? 0xcccccc,
+          roughness: 0.8,
+          metalness: 0,
+        });
+
+        // 烘焙世界座標
+        currentMesh.updateMatrixWorld(true);
+        const bakedGeometry = currentMesh.geometry.clone();
+        bakedGeometry.applyMatrix4(currentMesh.matrixWorld);
+
+        // 自動計算完美粗細
+        bakedGeometry.computeBoundingBox();
+        const boundingBox = bakedGeometry.boundingBox;
+        let optimalThickness = 0.02; 
+        
+        if (boundingBox) {
+            const size = new THREE.Vector3();
+            boundingBox.getSize(size);
+            const maxDimension = Math.max(size.x, size.y, size.z);
+            optimalThickness = maxDimension * 0.015; 
+        }
+
+        // 呼叫兵工廠生成晶格
+        const newLatticeMesh = createPrintableWireframe(bakedGeometry, latticeMaterial, optimalThickness);
+
+        // 💡 關鍵魔法：在新的晶格上貼標籤，並把「原模型」偷偷藏在裡面！
+        newLatticeMesh.userData.isLattice = true;
+        newLatticeMesh.userData.originalModel = state.currentModel;
+
+        // 💡 將舊模型從場景中移除 (注意：這裡已經把 dispose 刪掉了，讓原模型活下來)
+        sceneManager.scene.remove(state.currentModel);
+
+        // 把乾淨的晶格結構加進去
+        sceneManager.scene.add(newLatticeMesh);
+        state.currentModel = newLatticeMesh;
+
+        if (elements.polyCountLabel) {
+            elements.polyCountLabel.textContent = `Current Vertices: ${newLatticeMesh.geometry.attributes.position.count}`;
+        }
+        
+      } catch (error) {
+        console.error("Error generating lattice:", error);
+        alert("Model is too complex! Try reducing the mesh first.");
+      } finally {
+        // 💡 生成成功後，按鈕文字變成「還原模型」
+        latticeBtn.textContent = "Restore Original Model";
+        latticeBtn.disabled = false;
+      }
+    }, 100); 
+  });
+}

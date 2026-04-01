@@ -9,6 +9,7 @@ import { ModelController } from "./controllers/modelController";
 import { ViewerController } from "./controllers/viewerController";
 import { MeshController } from "./controllers/meshController";
 import { ExportController } from "./controllers/exportController";
+import { setupLatticeButton } from './three/meshOperations';
 import {
   applyHelperVisibility,
   applyModelVisibility,
@@ -69,3 +70,4 @@ applyWireframe(viewerState, sceneManager, elements);
 
 sceneManager.observeResize();
 sceneManager.startAnimationLoop();
+setupLatticeButton(viewerState, sceneManager, elements);
