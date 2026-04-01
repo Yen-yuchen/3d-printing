@@ -428,7 +428,7 @@ export function performSubdivision(
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // ==========================================
-// 1. 核心兵工廠：將一般模型轉換成實體晶格 (Lattice)
+// 1. Core Arsenal: Convert general models into solid lattices (Lattice)
 // ==========================================
 export function createPrintableWireframe(
     originalGeometry: THREE.BufferGeometry, 
@@ -441,7 +441,7 @@ export function createPrintableWireframe(
     const p1 = new THREE.Vector3();
     const p2 = new THREE.Vector3();
 
-    // 針對每一條邊，生成一根有厚度的圓柱體
+    // For each edge, generate a cylinder with thickness
     for (let i = 0; i < positionAttribute.count; i += 2) {
         p1.fromBufferAttribute(positionAttribute, i);
         p2.fromBufferAttribute(positionAttribute, i + 1);
@@ -460,7 +460,7 @@ export function createPrintableWireframe(
         geometriesToMerge.push(cylinderGeo);
     }
 
-    // 針對每一個頂點，生成一顆球當作關節
+    // For each vertex, generate a ball as a joint
     const posGeo = originalGeometry.attributes.position;
     const sphereGeoTemplate = new THREE.SphereGeometry(thickness * 1.05, 8, 8);
     
@@ -471,12 +471,12 @@ export function createPrintableWireframe(
        geometriesToMerge.push(sphere);
     }
 
-    // 將所有小管子與小球合併，並套用傳進來的材質
+    // Merge all small tubes and balls and apply the passed material
     const mergedGeo = mergeGeometries(geometriesToMerge);
     return new THREE.Mesh(mergedGeo, material);
 }
 // ==========================================
-// 2. UI 綁定：具備「還原」切換功能的按鈕
+// 2. UI Binding: Button with "Restore" switching function
 // ==========================================
 export function setupLatticeButton(state: any, sceneManager: any, elements: any) {
   const latticeBtn = document.getElementById('generateLatticeBtn') as HTMLButtonElement;
@@ -490,13 +490,13 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
     }
 
     // ==========================================
-    // 🔄 模式 2：如果現在已經是晶格，就執行「還原」！
+    // Mode 2: If it is already a lattice, perform "Restore"！
     // ==========================================
     if (state.currentModel.userData.isLattice) {
-        // 1. 從百寶袋裡把原本的模型拿出來
+        // 1. Take out the original model from the treasure bag
         const originalModel = state.currentModel.userData.originalModel;
         
-        // 2. 把目前的晶格從場景移除，並銷毀它來釋放記憶體
+        // 2. Removes the current lattice from the scene and destroys it to free up memory
         const latticeMesh = state.currentModel as THREE.Mesh;
         sceneManager.scene.remove(latticeMesh);
         latticeMesh.geometry.dispose();
@@ -506,25 +506,25 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
             (latticeMesh.material as THREE.Material).dispose();
         }
 
-        // 3. 把原本的模型加回場景，並更新系統狀態
+        // 3. Add the original model back to the scene and update the system status
         sceneManager.scene.add(originalModel);
         state.currentModel = originalModel;
 
-        // 4. 恢復按鈕文字
+        // 4. Restore button text
         latticeBtn.textContent = "Generate Lattice Wireframe";
         
-        // 5. 更新頂點數量標籤
+        // 5. Update vertex count label
         if (elements.polyCountLabel) {
             const origMesh = getFirstMesh(originalModel);
             if (origMesh && origMesh.geometry) {
                 elements.polyCountLabel.textContent = `Current Vertices: ${origMesh.geometry.attributes.position.count}`;
             }
         }
-        return; // 成功還原，直接提早結束！
+        return; 
     }
 
     // ==========================================
-    // ✨ 模式 1：生成全新的晶格結構
+    //  1：Generate new lattice structures
     // ==========================================
     latticeBtn.textContent = "Generating...";
     latticeBtn.disabled = true;
@@ -544,12 +544,12 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
           metalness: 0,
         });
 
-        // 烘焙世界座標
+        // Baking world coordinates
         currentMesh.updateMatrixWorld(true);
         const bakedGeometry = currentMesh.geometry.clone();
         bakedGeometry.applyMatrix4(currentMesh.matrixWorld);
 
-        // 自動計算完美粗細
+        // Automatically calculate perfect thickness
         bakedGeometry.computeBoundingBox();
         const boundingBox = bakedGeometry.boundingBox;
         let optimalThickness = 0.02; 
@@ -561,17 +561,17 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
             optimalThickness = maxDimension * 0.015; 
         }
 
-        // 呼叫兵工廠生成晶格
+        // Call the arsenal to generate a lattice
         const newLatticeMesh = createPrintableWireframe(bakedGeometry, latticeMaterial, optimalThickness);
 
-        // 💡 關鍵魔法：在新的晶格上貼標籤，並把「原模型」偷偷藏在裡面！
+        //  put a label on the new lattice and secretly hide the "original model" inside!
         newLatticeMesh.userData.isLattice = true;
         newLatticeMesh.userData.originalModel = state.currentModel;
 
-        // 💡 將舊模型從場景中移除 (注意：這裡已經把 dispose 刪掉了，讓原模型活下來)
+        //  Remove the old model from the scene 
         sceneManager.scene.remove(state.currentModel);
 
-        // 把乾淨的晶格結構加進去
+        // Add a clean lattice structure
         sceneManager.scene.add(newLatticeMesh);
         state.currentModel = newLatticeMesh;
 
@@ -583,7 +583,7 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
         console.error("Error generating lattice:", error);
         alert("Model is too complex! Try reducing the mesh first.");
       } finally {
-        // 💡 生成成功後，按鈕文字變成「還原模型」
+        // After the generation is successful, the button text changes to "Restore Model"
         latticeBtn.textContent = "Restore Original Model";
         latticeBtn.disabled = false;
       }
