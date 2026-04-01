@@ -1,5 +1,5 @@
 // src/utils/fileUtils.test.ts
-import { baseName, collectExternalUris, getFileExtension, isValidModelFormat } from './fileUtils';
+import { baseName, collectExternalUris, getFileExtension, isValidModelFormat } from '../src/utils/fileUtils';
 
 describe("File Utility Functions", () => {
 

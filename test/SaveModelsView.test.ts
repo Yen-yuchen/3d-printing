@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { renderSavedModels } from "./src/views/saveModelsView";
+import { renderSavedModels } from "../src/views/saveModelsView";
 
 describe("saveModelsView", () => {
     beforeEach(() => {

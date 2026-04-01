@@ -1,4 +1,4 @@
-import { calcVonMises, stressAtPoint } from './src/three/stressAnalysis';
+import { calcVonMises, stressAtPoint } from '../src/three/stressAnalysis';
 
 describe('Stress Analysis Function', () => {
   describe('calcVonMises()', () => {
