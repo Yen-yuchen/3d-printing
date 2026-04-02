@@ -1,9 +1,9 @@
+/// <reference types="jest" />
 import * as THREE from 'three';
 
 
 jest.mock('../src/three/meshOperations', () => ({
   createPrintableWireframe: (geometry: any, material: any, thickness: number) => {
-    const THREE = require('three');
     const mockLatticeMesh = new THREE.Mesh(geometry, material);
     mockLatticeMesh.userData = { isLattice: true, thickness: thickness };
     return mockLatticeMesh;

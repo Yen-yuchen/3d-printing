@@ -1,4 +1,5 @@
 // src/tests/sceneManagement.test.ts
+/// <reference types="jest" />
 import * as THREE from 'three';
 
 describe("Component: 3D Scene Management & Toggle Logic", () => {

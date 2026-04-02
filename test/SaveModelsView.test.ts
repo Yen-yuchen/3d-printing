@@ -2,6 +2,8 @@
  * @jest-environment jsdom
  */
 
+/// <reference types="jest" />
+
 import { renderSavedModels } from "../src/views/saveModelsView";
 
 describe("saveModelsView", () => {
