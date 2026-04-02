@@ -424,56 +424,110 @@ export function performSubdivision(
   setStatus(elements.statusEl, "Subdivision complete");
 }
 
-// src/three/meshOperations.ts
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-// ==========================================
-// 1. Core Arsenal: Convert general models into solid lattices (Lattice)
-// ==========================================
 export function createPrintableWireframe(
     originalGeometry: THREE.BufferGeometry, 
     material: THREE.Material, 
     thickness: number = 0.5
 ): THREE.Mesh {
+    const geometriesToMerge: THREE.BufferGeometry[] = [];
+
+    
     const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
     const positionAttribute = edgesGeometry.attributes.position;
-    const geometriesToMerge: THREE.BufferGeometry[] = [];
     const p1 = new THREE.Vector3();
     const p2 = new THREE.Vector3();
 
-    // For each edge, generate a cylinder with thickness
+    // Paint surface tube
     for (let i = 0; i < positionAttribute.count; i += 2) {
         p1.fromBufferAttribute(positionAttribute, i);
         p2.fromBufferAttribute(positionAttribute, i + 1);
-
         const distance = p1.distanceTo(p2);
         const cylinderGeo = new THREE.CylinderGeometry(thickness, thickness, distance, 8, 1, false);
-        
         cylinderGeo.translate(0, distance / 2, 0);
         cylinderGeo.rotateX(Math.PI / 2);
-
         const matrix = new THREE.Matrix4();
         matrix.lookAt(p2, p1, new THREE.Vector3(0, 1, 0));
         matrix.setPosition(p1);
         cylinderGeo.applyMatrix4(matrix);
-
         geometriesToMerge.push(cylinderGeo);
     }
 
-    // For each vertex, generate a ball as a joint
+    // Draw surface of joint ball
     const posGeo = originalGeometry.attributes.position;
     const sphereGeoTemplate = new THREE.SphereGeometry(thickness * 1.05, 8, 8);
-    
     for(let i = 0; i < posGeo.count; i++) {
-       const p = new THREE.Vector3().fromBufferAttribute(posGeo, i);
-       const sphere = sphereGeoTemplate.clone();
-       sphere.translate(p.x, p.y, p.z);
-       geometriesToMerge.push(sphere);
+        const p = new THREE.Vector3().fromBufferAttribute(posGeo, i);
+        const sphere = sphereGeoTemplate.clone();
+        sphere.translate(p.x, p.y, p.z);
+        geometriesToMerge.push(sphere);
     }
 
-    // Merge all small tubes and balls and apply the passed material
-    const mergedGeo = mergeGeometries(geometriesToMerge);
-    return new THREE.Mesh(mergedGeo, material);
+    originalGeometry.computeBoundingBox();
+    const box = originalGeometry.boundingBox!;
+    
+    const spacing = thickness * 8; 
+    const latticeCylinders: THREE.BufferGeometry[] = [];
+    
+    
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    
+    
+    const sizeX = (box.max.x - box.min.x) * 1.5;
+    const sizeY = (box.max.y - box.min.y) * 1.5;
+    const sizeZ = (box.max.z - box.min.z) * 1.5;
+
+    const minX = center.x - sizeX / 2; const maxX = center.x + sizeX / 2;
+    const minY = center.y - sizeY / 2; const maxY = center.y + sizeY / 2;
+    const minZ = center.z - sizeZ / 2; const maxZ = center.z + sizeZ / 2;
+
+    // Generate columns in three directions: X, Y, Z (使用擴大後的範圍)
+    for (let x = minX; x <= maxX; x += spacing) {
+        for (let z = minZ; z <= maxZ; z += spacing) {
+            const cylinderY = new THREE.CylinderGeometry(thickness, thickness, sizeY, 8);
+            cylinderY.translate(x, center.y, z);
+            latticeCylinders.push(cylinderY);
+        }
+    }
+    for (let y = minY; y <= maxY; y += spacing) {
+        for (let z = minZ; z <= maxZ; z += spacing) {
+            const cylinderX = new THREE.CylinderGeometry(thickness, thickness, sizeX, 8);
+            cylinderX.rotateZ(Math.PI / 2);
+            cylinderX.translate(center.x, y, z);
+            latticeCylinders.push(cylinderX);
+        }
+    }
+    for (let x = minX; x <= maxX; x += spacing) {
+        for (let y = minY; y <= maxY; y += spacing) {
+            const cylinderZ = new THREE.CylinderGeometry(thickness, thickness, sizeZ, 8);
+            cylinderZ.rotateX(Math.PI / 2);
+            cylinderZ.translate(x, y, center.z);
+            latticeCylinders.push(cylinderZ);
+        }
+    }
+
+    // Convert internal mesh to brush for CSG cropping
+    const mergedLatticeGeo = mergeGeometries(latticeCylinders);
+    const latticeBrush = new Brush(mergedLatticeGeo, material);
+    
+    
+    latticeBrush.rotation.set(Math.PI / 4, 0, Math.PI / 4);
+    latticeBrush.updateMatrixWorld(true);
+
+    const targetBrush = new Brush(originalGeometry, material);
+    targetBrush.updateMatrixWorld(true);
+
+    const evaluator = new Evaluator();
+    const csgResult = evaluator.evaluate(targetBrush, latticeBrush, INTERSECTION);
+    
+    // Add the cut "innards" and combine them with the "skin"!
+    geometriesToMerge.push(csgResult.geometry);
+
+    
+    const finalMergedGeo = mergeGeometries(geometriesToMerge);
+    return new THREE.Mesh(finalMergedGeo, material);
 }
 // ==========================================
 // 2. UI Binding: Button with "Restore" switching function
@@ -589,4 +643,63 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
       }
     }, 100); 
   });
+}
+
+import { Brush, Evaluator, INTERSECTION } from 'three-bvh-csg';
+
+
+export function createVolumetricLattice(targetMesh: THREE.Mesh, material: THREE.Material): THREE.Mesh {
+    
+    // 1. Get the Bounding Box of the model, so you know how big the tofu needs to be cut into
+    targetMesh.geometry.computeBoundingBox();
+    const box = targetMesh.geometry.boundingBox!;
+    
+    //2. Make "Lattice Block"
+    //In order to demonstrate and prevent the browser from crashing, we make the simplest "vertical stripe" grid here
+    //In the actual topic, you can write three circles (X, Y, Z) to draw an intersecting grid
+    const latticeMaterial = new THREE.MeshBasicMaterial();
+    const latticeGroup = new THREE.Scene(); // Use Scene as a staging container
+    
+    // Draw a column at regular intervals (assuming the spacing is 2)
+    const spacing = 2;
+    const thickness = 0.5;
+    const height = box.max.y - box.min.y + 2; //The column height is slightly higher than the model
+
+    for (let x = box.min.x; x <= box.max.x; x += spacing) {
+        for (let z = box.min.z; z <= box.max.z; z += spacing) {
+            const cylinderGeo = new THREE.CylinderGeometry(thickness, thickness, height, 8);
+            const cylinder = new THREE.Mesh(cylinderGeo, latticeMaterial);
+            cylinder.position.set(x, (box.max.y + box.min.y) / 2, z);
+            cylinder.updateMatrixWorld(true);
+            latticeGroup.add(cylinder);
+        }
+    }
+
+//Merge all scattered pillars into a huge "lattice block" Geometry
+    //(Note: In real projects, you may need to use BufferGeometryUtils.mergeGeometries)
+    //Here we assume that you already have a merged massiveLatticeMesh
+    //To simplify, we assume that there is only one complex Mesh in latticeGroup called massiveLatticeMesh
+
+//A. Convert your original model into a CSG-specific "Brush"    targetMesh.updateMatrixWorld(true);
+    const targetBrush = new Brush(targetMesh.geometry, material);
+    
+//Synchronize the position, angle, and scaling of the original model to the brush, otherwise the calculation will be at the origin.    targetBrush.position.copy(targetMesh.position);
+    targetBrush.rotation.copy(targetMesh.rotation);
+    targetBrush.scale.copy(targetMesh.scale);
+    targetBrush.updateMatrixWorld(true);
+    
+    // B.Make a test ball brush (used to replace the complex lattice tofu)
+    //Put it in the exact same position as the rabbit
+    const sphereGeo = new THREE.SphereGeometry(15, 32, 32);
+    const testSphereBrush = new Brush(sphereGeo, material);
+    testSphereBrush.position.copy(targetMesh.position); 
+    testSphereBrush.updateMatrixWorld(true);
+    
+    // C. Summon the Evaluator and perform INTERSECTION
+    //This line will automatically use the A and B brushes to calculate overlapping geometry!
+    const evaluator = new Evaluator();
+    const finalMesh = evaluator.evaluate(targetBrush, testSphereBrush, INTERSECTION);
+    
+    // D. The Evaluator has already packaged the result into a THREE.Mesh, so just return it!
+    return finalMesh;
 }

@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "cors": "^2.8.6",
-    "three": "^0.182.0"
+    "three": "^0.182.0",
+    "three-bvh-csg": "^0.0.18"
   }
 }
