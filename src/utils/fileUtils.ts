@@ -3,7 +3,12 @@ export function baseName(pathLike: string): string {
   const parts = cleaned.split("/");
   return parts[parts.length - 1] || cleaned;
 }
-
+/**
+ * Parses a glTF JSON object to find all external file dependencies (buffers and images).
+ * Ignores embedded base64 "data:" URIs.
+ * * @param gltfJson - The parsed JSON structure of the glTF file.
+ * @returns A Set containing the base filenames of all external URIs.
+ */
 export function collectExternalUris(gltfJson: any): Set<string> {
   const uris = new Set<string>();
   const addUri = (uri?: string) => {
@@ -20,7 +25,12 @@ export function collectExternalUris(gltfJson: any): Set<string> {
 
   return uris;
 }
-
+/**
+ * Triggers a browser download of the provided data.
+ * * @param data - The content of the file (String, ArrayBuffer, Blob, etc.)
+ * @param filename - The name of the file to save as
+ * @param mimeType - The MIME type of the file (e.g., 'application/json', 'model/gltf-binary')
+ */
 export function downloadFile(data: BlobPart, filename: string, mimeType: string): void {
   const blob = new Blob([data], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -34,7 +44,7 @@ export function downloadFile(data: BlobPart, filename: string, mimeType: string)
   URL.revokeObjectURL(url);
 }
 
-// src/utils/fileUtils.ts
+
 
 /**
  * convert all kinds of path-like strings to just the file extension, in lowercase. If no extension, return empty string.
