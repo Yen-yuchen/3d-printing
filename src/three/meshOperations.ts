@@ -30,9 +30,14 @@ export function getTargetObject(
 ): THREE.Object3D {
   return state.currentModel ?? sceneManager.shape;
 }
-
-// Merges duplicate vertices in all meshes of an object to optimize geometry
-// Also stores the original geometry for later restoration if needed
+/**
+ * Pre-processes and optimizes a 3D object by traversing its meshes and merging coincident vertices.
+ * This is a critical topology repair step that converts raw 'polygon soups' (common in STL files) 
+ * into continuous, manifold geometries required for successful CSG boolean operations and FEA simulations.
+ * It also caches the optimized geometry to allow for non-destructive mesh reduction later.
+ * * @param {THREE.Object3D} object - The loaded 3D object or scene to be processed.
+ * @returns {void}
+ */
 export function mergeModelVertices(object: THREE.Object3D): void {
   traverseMeshes(object, (mesh) => {
     if (!mesh.geometry.isBufferGeometry) return;
@@ -51,8 +56,15 @@ export function mergeModelVertices(object: THREE.Object3D): void {
   });
 }
 
-// Removes the currently loaded model from the scene and frees up its memory
-export function clearCurrentModel(
+/**
+ * Safely unloads the current 3D model from the WebGL scene and forces GPU garbage collection.
+ * This is a critical memory management routine that prevents memory leaks and WebGL context loss 
+ * by ensuring all associated geometries, materials, and textures are permanently flushed from the VRAM
+ * before the JavaScript garbage collector clears the CPU references.
+ * * @param {ViewerState} state - The global application state object containing the active model.
+ * @param {SceneManager} sceneManager - The core scene manager handling the Three.js scene graph.
+ * @returns {void}
+ */export function clearCurrentModel(
   state: ViewerState,
   sceneManager: SceneManager,
 ): void {
@@ -424,12 +436,17 @@ export function performSubdivision(
   setStatus(elements.statusEl, "Subdivision complete");
 }
 
-// src/three/meshOperations.ts
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-// ==========================================
-// 1. Core Arsenal: Convert general models into solid lattices (Lattice)
-// ==========================================
+/**
+ * Generates a 3D-printable volumetric wireframe (lattice) from a base geometry using a strut-and-node approach.
+ * This function iterates through the topological edges and vertices of the input mesh, creating cylindrical struts 
+ * and spherical joints to ensure a continuous, manifold structure optimized for additive manufacturing.
+ * * @param {THREE.BufferGeometry} originalGeometry - The base surface geometry to extract the topology from.
+ * @param {THREE.Material} material - The physical material to apply to the final merged mesh.
+ * @param {number} [thickness=0.5] - The radius of the cylindrical struts. Joint spheres will be scaled to 105% of this value.
+ * @returns {THREE.Mesh} A single merged mesh representing the printable volumetric lattice.
+ */
 export function createPrintableWireframe(
     originalGeometry: THREE.BufferGeometry, 
     material: THREE.Material, 
@@ -475,9 +492,15 @@ export function createPrintableWireframe(
     const mergedGeo = mergeGeometries(geometriesToMerge);
     return new THREE.Mesh(mergedGeo, material);
 }
-// ==========================================
-// 2. UI Binding: Button with "Restore" switching function
-// ==========================================
+/**
+ * Initializes the event listener for the Lattice Generation button.
+ * This function acts as a state toggle: it generates a 3D printable lattice wireframe 
+ * from the current model, or restores the original model if the lattice is currently active.
+ * * @param {any} state - The global application state object, containing `currentModel`.
+ * @param {any} sceneManager - The Three.js scene manager responsible for rendering and scene graph manipulation.
+ * @param {any} elements - DOM elements reference object (e.g., polyCountLabel, modelColorPicker).
+ * @returns {void}
+ */
 export function setupLatticeButton(state: any, sceneManager: any, elements: any) {
   const latticeBtn = document.getElementById('generateLatticeBtn') as HTMLButtonElement;
   
@@ -489,9 +512,7 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
       return;
     }
 
-    // ==========================================
-    // Mode 2: If it is already a lattice, perform "Restore"！
-    // ==========================================
+   
     if (state.currentModel.userData.isLattice) {
         // 1. Take out the original model from the treasure bag
         const originalModel = state.currentModel.userData.originalModel;

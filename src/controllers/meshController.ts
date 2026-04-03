@@ -15,7 +15,9 @@ import {
   syncReduceTargetMode,
 } from "../views/meshToolsView";
 import { setStatus } from "../views/statusView";
-
+/**
+ * Controller for handling mesh simplification, subdivision, and related UI interactions.
+ */
 export class MeshController {
   private readonly viewerState: ViewerState;
   private readonly elements: AppElements;

@@ -20,7 +20,9 @@ import { setStatus } from "../views/statusView";
 import { applySimulatedVonMises } from "../three/stressAnalysis";
 
 type SavedModelOpenDetail = { modelId: number };
-
+/**
+ * Controller for handling viewer interactions and UI updates. Connects the viewer state, scene manager, and DOM elements to provide a responsive user experience.
+ */
 export class ViewerController {
   private readonly viewerState: ViewerState;
   private readonly elements: AppElements;

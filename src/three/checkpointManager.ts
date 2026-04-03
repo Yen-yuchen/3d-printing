@@ -4,7 +4,9 @@ import type { SceneManager } from "./sceneManager";
 import type { AppElements } from "../utils/dom";
 import { getFirstMesh } from "../utils/threeUtils";
 import { renderBudgetInfo } from "../views/meshToolsView";
-
+/**
+ * Manages checkpoints for the 3D model, allowing users to save and restore the state of the model's geometry. It also provides a ghost overlay to visualize the checkpoint geometry.
+ */
 export class CheckpointManager {
   private checkpointGeometry: THREE.BufferGeometry | null = null;
   private checkpointMesh: THREE.Mesh | null = null;
