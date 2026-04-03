@@ -3,6 +3,11 @@ import type { ViewerState } from "../state/viewerState";
 import { getAppElements, type AppElements } from "../utils/dom";
 import { SceneManager } from "./sceneManager";
 
+/**
+ * Applies a Von Mises stress color map to the vertices of a 3D model based on user input.
+ * * @param state - The current viewer state containing the model.
+ * @param sceneManager - The scene manager as a fallback for the model.
+ */
 export function applySimulatedVonMises(state: ViewerState, sceneManager: SceneManager): void {
   console.log("hello")
   let model = state.currentModel; 

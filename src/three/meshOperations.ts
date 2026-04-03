@@ -112,8 +112,14 @@ export function applyScaleFromSlider(
   target.scale.set(factor, factor, factor);
 }
 
-// Toggles wireframe mode for all materials in an object
-// Works with both single materials and arrays of materials (multi-material objects)
+/**
+ * Recursively traverses a 3D object hierarchy and toggles the wireframe rendering mode on all underlying materials.
+ * This function robustly handles both single material assignments and multi-material arrays, 
+ * ensuring complex imported models (e.g., GLTF/OBJ) are safely updated without runtime errors.
+ * * @param {THREE.Object3D} object - The root Three.js object or scene graph to traverse.
+ * @param {boolean} enabled - The target wireframe state (true for wireframe, false for solid shading).
+ * @returns {void}
+ */
 export function setWireframe(object: THREE.Object3D, enabled: boolean): void {
   object.traverse((child: any) => {
     if (!child?.isMesh) return;
@@ -129,8 +135,14 @@ export function setWireframe(object: THREE.Object3D, enabled: boolean): void {
   });
 }
 
-// Applies wireframe display mode based on the wireframe toggle checkbox
-export function applyWireframe(
+/**
+ * Controller function that syncs the visual wireframe state of the active 3D model 
+ * with the corresponding HTML checkbox element in the user interface.
+ * * @param {ViewerState} state - The global application state containing active model references.
+ * @param {SceneManager} sceneManager - The manager handling the Three.js scene environment.
+ * @param {AppElements} elements - The DOM elements reference object containing the UI toggles.
+ * @returns {void}
+ */export function applyWireframe(
   state: ViewerState,
   sceneManager: SceneManager,
   elements: AppElements,
@@ -284,9 +296,16 @@ export function performSimplification(
   }, 50);
 }
 
-// Applies a color-based density heatmap to the mesh
-// Shows areas of high vertex density in red/warm colors and low density in blue/cool colors
-// Uses HSL color space: Hue ranges from 0 (red) to 0.66 (blue)
+/**
+ * Calculates and applies a topological density heatmap to the active 3D mesh.
+ * This algorithm evaluates localized mesh density by calculating the average area of the faces 
+ * connected to each vertex using vector cross products. The resulting scalar field is normalized 
+ * and mapped to an HSL color gradient, providing immediate visual feedback on mesh complexity.
+ * * - High Vertex Density (Small face area) ➔ Warm colors (Red / Hue: 0.0)
+ * - Low Vertex Density (Large face area)  ➔ Cool colors (Blue / Hue: 0.66)
+ * * @param {ViewerState} state - The global application state object containing the active model.
+ * @returns {void}
+ */
 export function applyDensityHeatmap(state: ViewerState): void {
   const mesh = getFirstMesh(state.currentModel);
   if (!mesh || !mesh.geometry.isBufferGeometry) return;

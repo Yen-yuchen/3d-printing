@@ -11,7 +11,9 @@ import {
   createScene,
 } from "./viewerHelpers";
 import { DEFAULT_CAMERA_POSITION } from "../utils/constants";
-
+/**
+ * SceneManager is responsible for managing the Three.js scene, including the camera, renderer, controls, and objects within the scene. It provides methods to change the shape being displayed, set the background color, handle resizing, reset the camera position, and start the animation loop.
+ */
 export class SceneManager {
   public readonly scene: THREE.Scene;
   public readonly camera: THREE.PerspectiveCamera;
