@@ -13,8 +13,10 @@
     "docs": "typedoc --entryPointStrategy expand ./src"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/cors": "^2.8.19",
     "@types/jest": "^30.0.0",
+    "@types/node": "^25.5.0",
     "@types/three": "^0.182.0",
     "concurrently": "^9.2.1",
     "jest": "^30.3.0",
