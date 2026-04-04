@@ -4,13 +4,14 @@ import cors from "cors";
 import { api } from "./routes.js";
 
 const app = express();
-
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: [
+      "http://localhost:5173",
+      "http://18.119.1.239:5173",
+    ],
   }),
 );
-
 app.use(express.json());
 
 app.use("/api", api);

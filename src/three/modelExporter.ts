@@ -23,7 +23,7 @@ export async function uploadModelToServer(
     formData.append("model_id", String(modelId));
   }
 
-  const response = await fetch("http://localhost:3001/api/models", {
+  const response = await fetch("/api/models", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
