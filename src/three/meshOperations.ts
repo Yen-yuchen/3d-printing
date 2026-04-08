@@ -19,6 +19,7 @@ import {
   traverseMeshes,
 } from "../utils/threeUtils";
 
+import { Brush, Evaluator, INTERSECTION, ADDITION } from 'three-bvh-csg';
 
 // Initialize the simplify modifier for mesh reduction
 const simplifyModifier = new SimplifyModifier();
@@ -426,6 +427,8 @@ export function performSubdivision(
 
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
+// 確保你有引入 mergeGeometries 的工具函數
+
 export function createPrintableWireframe(
     originalGeometry: THREE.BufferGeometry, 
     material: THREE.Material, 
@@ -433,13 +436,12 @@ export function createPrintableWireframe(
 ): THREE.Mesh {
     const geometriesToMerge: THREE.BufferGeometry[] = [];
 
-    
     const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
     const positionAttribute = edgesGeometry.attributes.position;
     const p1 = new THREE.Vector3();
     const p2 = new THREE.Vector3();
 
-    // Paint surface tube
+    // Paint surface tube (繪製外殼管線)
     for (let i = 0; i < positionAttribute.count; i += 2) {
         p1.fromBufferAttribute(positionAttribute, i);
         p2.fromBufferAttribute(positionAttribute, i + 1);
@@ -454,7 +456,7 @@ export function createPrintableWireframe(
         geometriesToMerge.push(cylinderGeo);
     }
 
-    // Draw surface of joint ball
+    // Draw surface of joint ball (繪製外殼關節球)
     const posGeo = originalGeometry.attributes.position;
     const sphereGeoTemplate = new THREE.SphereGeometry(thickness * 1.05, 8, 8);
     for(let i = 0; i < posGeo.count; i++) {
@@ -470,10 +472,8 @@ export function createPrintableWireframe(
     const spacing = thickness * 8; 
     const latticeCylinders: THREE.BufferGeometry[] = [];
     
-    
     const center = new THREE.Vector3();
     box.getCenter(center);
-    
     
     const sizeX = (box.max.x - box.min.x) * 1.5;
     const sizeY = (box.max.y - box.min.y) * 1.5;
@@ -483,7 +483,7 @@ export function createPrintableWireframe(
     const minY = center.y - sizeY / 2; const maxY = center.y + sizeY / 2;
     const minZ = center.z - sizeZ / 2; const maxZ = center.z + sizeZ / 2;
 
-    // Generate columns in three directions: X, Y, Z (使用擴大後的範圍)
+    // Generate columns in three directions: X, Y, Z (生成內部晶格管子)
     for (let x = minX; x <= maxX; x += spacing) {
         for (let z = minZ; z <= maxZ; z += spacing) {
             const cylinderY = new THREE.CylinderGeometry(thickness, thickness, sizeY, 8);
@@ -508,25 +508,36 @@ export function createPrintableWireframe(
         }
     }
 
-    // Convert internal mesh to brush for CSG cropping
-    const mergedLatticeGeo = mergeGeometries(latticeCylinders);
-    const latticeBrush = new Brush(mergedLatticeGeo, material);
-    
-    
-    latticeBrush.rotation.set(Math.PI / 4, 0, Math.PI / 4);
-    latticeBrush.updateMatrixWorld(true);
+    const surfaceWireframeGeo = mergeGeometries(geometriesToMerge);
+
 
     const targetBrush = new Brush(originalGeometry, material);
     targetBrush.updateMatrixWorld(true);
 
     const evaluator = new Evaluator();
-    const csgResult = evaluator.evaluate(targetBrush, latticeBrush, INTERSECTION);
+    const cutLatticePieces: THREE.BufferGeometry[] = [];
+
+   
+    for (const cylGeo of latticeCylinders) {
+        const singleLatticeBrush = new Brush(cylGeo, material);
+        
+        singleLatticeBrush.rotation.set(Math.PI / 4, 0, Math.PI / 4);
+        singleLatticeBrush.updateMatrixWorld(true);
+
+        const cutPiece = evaluator.evaluate(targetBrush, singleLatticeBrush, INTERSECTION);
+        
+        if (cutPiece && cutPiece.geometry) {
+            cutLatticePieces.push(cutPiece.geometry);
+        }
+    }
+
+  
+    const finalElements = [surfaceWireframeGeo, ...cutLatticePieces];
+    const finalMergedGeo = mergeGeometries(finalElements);
     
-    // Add the cut "innards" and combine them with the "skin"!
-    geometriesToMerge.push(csgResult.geometry);
+    finalMergedGeo.computeVertexNormals();
 
     
-    const finalMergedGeo = mergeGeometries(geometriesToMerge);
     return new THREE.Mesh(finalMergedGeo, material);
 }
 // ==========================================
@@ -612,7 +623,7 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
             const size = new THREE.Vector3();
             boundingBox.getSize(size);
             const maxDimension = Math.max(size.x, size.y, size.z);
-            optimalThickness = maxDimension * 0.015; 
+            optimalThickness = maxDimension * 0.025; 
         }
 
         // Call the arsenal to generate a lattice
@@ -645,7 +656,6 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
   });
 }
 
-import { Brush, Evaluator, INTERSECTION } from 'three-bvh-csg';
 
 
 export function createVolumetricLattice(targetMesh: THREE.Mesh, material: THREE.Material): THREE.Mesh {
@@ -703,3 +713,4 @@ export function createVolumetricLattice(targetMesh: THREE.Mesh, material: THREE.
     // D. The Evaluator has already packaged the result into a THREE.Mesh, so just return it!
     return finalMesh;
 }
+
