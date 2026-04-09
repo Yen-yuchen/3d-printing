@@ -425,9 +425,8 @@ export function performSubdivision(
   setStatus(elements.statusEl, "Subdivision complete");
 }
 
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-// 確保你有引入 mergeGeometries 的工具函數
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export function createPrintableWireframe(
     originalGeometry: THREE.BufferGeometry, 
@@ -435,16 +434,23 @@ export function createPrintableWireframe(
     thickness: number = 0.5
 ): THREE.Mesh {
     const geometriesToMerge: THREE.BufferGeometry[] = [];
+    const latticeCylinders: THREE.BufferGeometry[] = []; // 改回單純收集 Geometry
 
+    // 共用的關節球模板
+    const sphereGeoTemplate = new THREE.SphereGeometry(thickness * 1.05, 8, 8);
+
+    // ==========================================
+    // 1. 繪製外殼線框與關節球
+    // ==========================================
     const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
     const positionAttribute = edgesGeometry.attributes.position;
     const p1 = new THREE.Vector3();
     const p2 = new THREE.Vector3();
 
-    // Paint surface tube (繪製外殼管線)
     for (let i = 0; i < positionAttribute.count; i += 2) {
         p1.fromBufferAttribute(positionAttribute, i);
         p2.fromBufferAttribute(positionAttribute, i + 1);
+        
         const distance = p1.distanceTo(p2);
         const cylinderGeo = new THREE.CylinderGeometry(thickness, thickness, distance, 8, 1, false);
         cylinderGeo.translate(0, distance / 2, 0);
@@ -456,90 +462,138 @@ export function createPrintableWireframe(
         geometriesToMerge.push(cylinderGeo);
     }
 
-    // Draw surface of joint ball (繪製外殼關節球)
     const posGeo = originalGeometry.attributes.position;
-    const sphereGeoTemplate = new THREE.SphereGeometry(thickness * 1.05, 8, 8);
     for(let i = 0; i < posGeo.count; i++) {
         const p = new THREE.Vector3().fromBufferAttribute(posGeo, i);
         const sphere = sphereGeoTemplate.clone();
         sphere.translate(p.x, p.y, p.z);
         geometriesToMerge.push(sphere);
     }
-
-    originalGeometry.computeBoundingBox();
-    const box = originalGeometry.boundingBox!;
-    
-    const spacing = thickness * 8; 
-    const latticeCylinders: THREE.BufferGeometry[] = [];
-    
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-    
-    const sizeX = (box.max.x - box.min.x) * 1.5;
-    const sizeY = (box.max.y - box.min.y) * 1.5;
-    const sizeZ = (box.max.z - box.min.z) * 1.5;
-
-    const minX = center.x - sizeX / 2; const maxX = center.x + sizeX / 2;
-    const minY = center.y - sizeY / 2; const maxY = center.y + sizeY / 2;
-    const minZ = center.z - sizeZ / 2; const maxZ = center.z + sizeZ / 2;
-
-    // Generate columns in three directions: X, Y, Z (生成內部晶格管子)
-    for (let x = minX; x <= maxX; x += spacing) {
-        for (let z = minZ; z <= maxZ; z += spacing) {
-            const cylinderY = new THREE.CylinderGeometry(thickness, thickness, sizeY, 8);
-            cylinderY.translate(x, center.y, z);
-            latticeCylinders.push(cylinderY);
-        }
-    }
-    for (let y = minY; y <= maxY; y += spacing) {
-        for (let z = minZ; z <= maxZ; z += spacing) {
-            const cylinderX = new THREE.CylinderGeometry(thickness, thickness, sizeX, 8);
-            cylinderX.rotateZ(Math.PI / 2);
-            cylinderX.translate(center.x, y, z);
-            latticeCylinders.push(cylinderX);
-        }
-    }
-    for (let x = minX; x <= maxX; x += spacing) {
-        for (let y = minY; y <= maxY; y += spacing) {
-            const cylinderZ = new THREE.CylinderGeometry(thickness, thickness, sizeZ, 8);
-            cylinderZ.rotateX(Math.PI / 2);
-            cylinderZ.translate(x, y, center.z);
-            latticeCylinders.push(cylinderZ);
-        }
-    }
-
     const surfaceWireframeGeo = mergeGeometries(geometriesToMerge);
 
+    // ==========================================
+    // 2. 射線檢測與「錨點吸附 (Snapping)」
+    // ==========================================
+    const spacing = thickness * 8; 
+    const fwdLatticeMatrix = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(Math.PI / 4, 0, Math.PI / 4));
+    const invLatticeMatrix = fwdLatticeMatrix.clone().invert();
+    
+    const raycastGeo = originalGeometry.clone().applyMatrix4(invLatticeMatrix);
+    raycastGeo.computeBoundingBox();
+    const box = raycastGeo.boundingBox!;
 
-    const targetBrush = new Brush(originalGeometry, material);
-    targetBrush.updateMatrixWorld(true);
+    const rayTarget = new THREE.Mesh(raycastGeo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+    const raycaster = new THREE.Raycaster();
+    const posAttr = rayTarget.geometry.attributes.position as THREE.BufferAttribute;
 
-    const evaluator = new Evaluator();
-    const cutLatticePieces: THREE.BufferGeometry[] = [];
+    const minX = box.min.x; const maxX = box.max.x;
+    const minY = box.min.y; const maxY = box.max.y;
+    const minZ = box.min.z; const maxZ = box.max.z;
 
-   
-    for (const cylGeo of latticeCylinders) {
-        const singleLatticeBrush = new Brush(cylGeo, material);
+    // 核心輔助工具 1：精準生成任意兩點之間的管子
+    function addCylinder(startPoint: THREE.Vector3, endPoint: THREE.Vector3) {
+        const length = startPoint.distanceTo(endPoint);
+        if (length < thickness) return; // 忽略極短的碎屑
         
-        singleLatticeBrush.rotation.set(Math.PI / 4, 0, Math.PI / 4);
-        singleLatticeBrush.updateMatrixWorld(true);
+        const cyl = new THREE.CylinderGeometry(thickness, thickness, length, 8, 1, false);
+        cyl.translate(0, length / 2, 0);
+        cyl.rotateX(Math.PI / 2);
+        const matrix = new THREE.Matrix4();
+        matrix.lookAt(endPoint, startPoint, new THREE.Vector3(0, 1, 0));
+        matrix.setPosition(startPoint);
+        cyl.applyMatrix4(matrix);
+        latticeCylinders.push(cyl);
+    }
 
-        const cutPiece = evaluator.evaluate(targetBrush, singleLatticeBrush, INTERSECTION);
+    // 核心輔助工具 2：尋找最近的外殼頂點 (錨點)
+    function getSnappedPoint(intersect: THREE.Intersection): THREE.Vector3 {
+        if (!intersect.face) return intersect.point;
+        const vA = new THREE.Vector3().fromBufferAttribute(posAttr, intersect.face.a);
+        const vB = new THREE.Vector3().fromBufferAttribute(posAttr, intersect.face.b);
+        const vC = new THREE.Vector3().fromBufferAttribute(posAttr, intersect.face.c);
         
-        if (cutPiece && cutPiece.geometry) {
-            cutLatticePieces.push(cutPiece.geometry);
+        const hit = intersect.point;
+        const dA = hit.distanceToSquared(vA);
+        const dB = hit.distanceToSquared(vB);
+        const dC = hit.distanceToSquared(vC);
+        
+        if (dA <= dB && dA <= dC) return vA;
+        if (dB <= dA && dB <= dC) return vB;
+        return vC;
+    }
+
+    // 發射雷射光並建立連結
+    function processRay(origin: THREE.Vector3, dir: THREE.Vector3) {
+        raycaster.set(origin, dir);
+        const intersects = raycaster.intersectObject(rayTarget, false);
+        
+        const uniqueIntersects = [];
+        for (let i = 0; i < intersects.length; i++) {
+            if (i === 0 || intersects[i].distance - uniqueIntersects[uniqueIntersects.length - 1].distance > 0.01) {
+                uniqueIntersects.push(intersects[i]);
+            }
+        }
+
+        for (let i = 0; i < uniqueIntersects.length - 1; i += 2) {
+            const hit1 = uniqueIntersects[i].point;
+            const hit2 = uniqueIntersects[i + 1].point;
+            const length = hit1.distanceTo(hit2);
+            
+            if (length > thickness * 2) { 
+                // 1. 建立筆直的內部主樑
+                addCylinder(hit1, hit2);
+                
+                // 2. 找到最近的兩個外殼線框關節點
+                const snap1 = getSnappedPoint(uniqueIntersects[i]);
+                const snap2 = getSnappedPoint(uniqueIntersects[i + 1]);
+                
+                // 3. 伸出樹根！將內部樑的端點死死綁在外殼關節上
+                addCylinder(hit1, snap1);
+                addCylinder(hit2, snap2);
+                
+                // 4. 在交界處補上一顆球，讓轉折處完美平滑
+                const s1 = sphereGeoTemplate.clone(); s1.translate(hit1.x, hit1.y, hit1.z);
+                const s2 = sphereGeoTemplate.clone(); s2.translate(hit2.x, hit2.y, hit2.z);
+                latticeCylinders.push(s1, s2);
+            }
         }
     }
 
-  
-    const finalElements = [surfaceWireframeGeo, ...cutLatticePieces];
-    const finalMergedGeo = mergeGeometries(finalElements);
+    // 從三個方向掃描
+    const eps = (maxX - minX) * 0.1;
+    const dirX = new THREE.Vector3(1, 0, 0);
+    const dirY = new THREE.Vector3(0, 1, 0);
+    const dirZ = new THREE.Vector3(0, 0, 1);
+
+    for (let y = minY; y <= maxY; y += spacing) {
+        for (let z = minZ; z <= maxZ; z += spacing) processRay(new THREE.Vector3(minX - eps, y, z), dirX);
+    }
+    for (let x = minX; x <= maxX; x += spacing) {
+        for (let z = minZ; z <= maxZ; z += spacing) processRay(new THREE.Vector3(x, minY - eps, z), dirY);
+    }
+    for (let x = minX; x <= maxX; x += spacing) {
+        for (let y = minY; y <= maxY; y += spacing) processRay(new THREE.Vector3(x, y, minZ - eps), dirZ);
+    }
+
+    // ==========================================
+    // 3. 收尾組合 (沒有複雜的刪除運算了！)
+    // ==========================================
+    let mergedLatticeGeo = new THREE.BufferGeometry();
+    if (latticeCylinders.length > 0) {
+        mergedLatticeGeo = mergeGeometries(latticeCylinders);
+        // 將乾淨的內部網路與連接器，一併優雅地旋轉 45 度放回去！
+        mergedLatticeGeo.applyMatrix4(fwdLatticeMatrix);
+    }
+
+    const finalElements = [surfaceWireframeGeo];
+    if (latticeCylinders.length > 0) finalElements.push(mergedLatticeGeo);
     
+    const finalMergedGeo = mergeGeometries(finalElements);
     finalMergedGeo.computeVertexNormals();
 
-    
     return new THREE.Mesh(finalMergedGeo, material);
 }
+
 // ==========================================
 // 2. UI Binding: Button with "Restore" switching function
 // ==========================================
@@ -623,7 +677,7 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
             const size = new THREE.Vector3();
             boundingBox.getSize(size);
             const maxDimension = Math.max(size.x, size.y, size.z);
-            optimalThickness = maxDimension * 0.025; 
+            optimalThickness = maxDimension * 0.015; 
         }
 
         // Call the arsenal to generate a lattice
@@ -656,61 +710,4 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
   });
 }
 
-
-
-export function createVolumetricLattice(targetMesh: THREE.Mesh, material: THREE.Material): THREE.Mesh {
-    
-    // 1. Get the Bounding Box of the model, so you know how big the tofu needs to be cut into
-    targetMesh.geometry.computeBoundingBox();
-    const box = targetMesh.geometry.boundingBox!;
-    
-    //2. Make "Lattice Block"
-    //In order to demonstrate and prevent the browser from crashing, we make the simplest "vertical stripe" grid here
-    //In the actual topic, you can write three circles (X, Y, Z) to draw an intersecting grid
-    const latticeMaterial = new THREE.MeshBasicMaterial();
-    const latticeGroup = new THREE.Scene(); // Use Scene as a staging container
-    
-    // Draw a column at regular intervals (assuming the spacing is 2)
-    const spacing = 2;
-    const thickness = 0.5;
-    const height = box.max.y - box.min.y + 2; //The column height is slightly higher than the model
-
-    for (let x = box.min.x; x <= box.max.x; x += spacing) {
-        for (let z = box.min.z; z <= box.max.z; z += spacing) {
-            const cylinderGeo = new THREE.CylinderGeometry(thickness, thickness, height, 8);
-            const cylinder = new THREE.Mesh(cylinderGeo, latticeMaterial);
-            cylinder.position.set(x, (box.max.y + box.min.y) / 2, z);
-            cylinder.updateMatrixWorld(true);
-            latticeGroup.add(cylinder);
-        }
-    }
-
-//Merge all scattered pillars into a huge "lattice block" Geometry
-    //(Note: In real projects, you may need to use BufferGeometryUtils.mergeGeometries)
-    //Here we assume that you already have a merged massiveLatticeMesh
-    //To simplify, we assume that there is only one complex Mesh in latticeGroup called massiveLatticeMesh
-
-//A. Convert your original model into a CSG-specific "Brush"    targetMesh.updateMatrixWorld(true);
-    const targetBrush = new Brush(targetMesh.geometry, material);
-    
-//Synchronize the position, angle, and scaling of the original model to the brush, otherwise the calculation will be at the origin.    targetBrush.position.copy(targetMesh.position);
-    targetBrush.rotation.copy(targetMesh.rotation);
-    targetBrush.scale.copy(targetMesh.scale);
-    targetBrush.updateMatrixWorld(true);
-    
-    // B.Make a test ball brush (used to replace the complex lattice tofu)
-    //Put it in the exact same position as the rabbit
-    const sphereGeo = new THREE.SphereGeometry(15, 32, 32);
-    const testSphereBrush = new Brush(sphereGeo, material);
-    testSphereBrush.position.copy(targetMesh.position); 
-    testSphereBrush.updateMatrixWorld(true);
-    
-    // C. Summon the Evaluator and perform INTERSECTION
-    //This line will automatically use the A and B brushes to calculate overlapping geometry!
-    const evaluator = new Evaluator();
-    const finalMesh = evaluator.evaluate(targetBrush, testSphereBrush, INTERSECTION);
-    
-    // D. The Evaluator has already packaged the result into a THREE.Mesh, so just return it!
-    return finalMesh;
-}
 
