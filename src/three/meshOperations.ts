@@ -19,6 +19,7 @@ import {
   traverseMeshes,
 } from "../utils/threeUtils";
 
+import { Brush, Evaluator, INTERSECTION, ADDITION } from 'three-bvh-csg';
 
 // Initialize the simplify modifier for mesh reduction
 const simplifyModifier = new SimplifyModifier();
@@ -471,45 +472,148 @@ export function createPrintableWireframe(
     material: THREE.Material, 
     thickness: number = 0.5
 ): THREE.Mesh {
+    const geometriesToMerge: THREE.BufferGeometry[] = [];
+    const latticeCylinders: THREE.BufferGeometry[] = []; 
+
+    const sphereGeoTemplate = new THREE.SphereGeometry(thickness * 1.05, 8, 8);
+
+   
     const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
     const positionAttribute = edgesGeometry.attributes.position;
-    const geometriesToMerge: THREE.BufferGeometry[] = [];
     const p1 = new THREE.Vector3();
     const p2 = new THREE.Vector3();
 
-    // For each edge, generate a cylinder with thickness
     for (let i = 0; i < positionAttribute.count; i += 2) {
         p1.fromBufferAttribute(positionAttribute, i);
         p2.fromBufferAttribute(positionAttribute, i + 1);
-
+        
         const distance = p1.distanceTo(p2);
         const cylinderGeo = new THREE.CylinderGeometry(thickness, thickness, distance, 8, 1, false);
-        
         cylinderGeo.translate(0, distance / 2, 0);
         cylinderGeo.rotateX(Math.PI / 2);
-
         const matrix = new THREE.Matrix4();
         matrix.lookAt(p2, p1, new THREE.Vector3(0, 1, 0));
         matrix.setPosition(p1);
         cylinderGeo.applyMatrix4(matrix);
-
         geometriesToMerge.push(cylinderGeo);
     }
 
-    // For each vertex, generate a ball as a joint
     const posGeo = originalGeometry.attributes.position;
-    const sphereGeoTemplate = new THREE.SphereGeometry(thickness * 1.05, 8, 8);
-    
     for(let i = 0; i < posGeo.count; i++) {
-       const p = new THREE.Vector3().fromBufferAttribute(posGeo, i);
-       const sphere = sphereGeoTemplate.clone();
-       sphere.translate(p.x, p.y, p.z);
-       geometriesToMerge.push(sphere);
+        const p = new THREE.Vector3().fromBufferAttribute(posGeo, i);
+        const sphere = sphereGeoTemplate.clone();
+        sphere.translate(p.x, p.y, p.z);
+        geometriesToMerge.push(sphere);
+    }
+    const surfaceWireframeGeo = mergeGeometries(geometriesToMerge);
+
+   
+    const spacing = thickness * 8; 
+    const fwdLatticeMatrix = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(Math.PI / 4, 0, Math.PI / 4));
+    const invLatticeMatrix = fwdLatticeMatrix.clone().invert();
+    
+    const raycastGeo = originalGeometry.clone().applyMatrix4(invLatticeMatrix);
+    raycastGeo.computeBoundingBox();
+    const box = raycastGeo.boundingBox!;
+
+    const rayTarget = new THREE.Mesh(raycastGeo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+    const raycaster = new THREE.Raycaster();
+    const posAttr = rayTarget.geometry.attributes.position as THREE.BufferAttribute;
+
+    const minX = box.min.x; const maxX = box.max.x;
+    const minY = box.min.y; const maxY = box.max.y;
+    const minZ = box.min.z; const maxZ = box.max.z;
+
+    function addCylinder(startPoint: THREE.Vector3, endPoint: THREE.Vector3) {
+        const length = startPoint.distanceTo(endPoint);
+        if (length < thickness) return; 
+        const cyl = new THREE.CylinderGeometry(thickness, thickness, length, 8, 1, false);
+        cyl.translate(0, length / 2, 0);
+        cyl.rotateX(Math.PI / 2);
+        const matrix = new THREE.Matrix4();
+        matrix.lookAt(endPoint, startPoint, new THREE.Vector3(0, 1, 0));
+        matrix.setPosition(startPoint);
+        cyl.applyMatrix4(matrix);
+        latticeCylinders.push(cyl);
     }
 
-    // Merge all small tubes and balls and apply the passed material
-    const mergedGeo = mergeGeometries(geometriesToMerge);
-    return new THREE.Mesh(mergedGeo, material);
+    function getSnappedPoint(intersect: THREE.Intersection): THREE.Vector3 {
+        if (!intersect.face) return intersect.point;
+        const vA = new THREE.Vector3().fromBufferAttribute(posAttr, intersect.face.a);
+        const vB = new THREE.Vector3().fromBufferAttribute(posAttr, intersect.face.b);
+        const vC = new THREE.Vector3().fromBufferAttribute(posAttr, intersect.face.c);
+        
+        const hit = intersect.point;
+        const dA = hit.distanceToSquared(vA);
+        const dB = hit.distanceToSquared(vB);
+        const dC = hit.distanceToSquared(vC);
+        
+        if (dA <= dB && dA <= dC) return vA;
+        if (dB <= dA && dB <= dC) return vB;
+        return vC;
+    }
+
+    function processRay(origin: THREE.Vector3, dir: THREE.Vector3) {
+        raycaster.set(origin, dir);
+        const intersects = raycaster.intersectObject(rayTarget, false);
+        
+        const uniqueIntersects = [];
+        for (let i = 0; i < intersects.length; i++) {
+            if (i === 0 || intersects[i].distance - uniqueIntersects[uniqueIntersects.length - 1].distance > 0.01) {
+                uniqueIntersects.push(intersects[i]);
+            }
+        }
+
+        for (let i = 0; i < uniqueIntersects.length - 1; i += 2) {
+            const hit1 = uniqueIntersects[i].point;
+            const hit2 = uniqueIntersects[i + 1].point;
+            const length = hit1.distanceTo(hit2);
+            
+            if (length > thickness * 2) { 
+                addCylinder(hit1, hit2);
+                
+                const snap1 = getSnappedPoint(uniqueIntersects[i]);
+                const snap2 = getSnappedPoint(uniqueIntersects[i + 1]);
+                
+                addCylinder(hit1, snap1);
+                addCylinder(hit2, snap2);
+                
+                const s1 = sphereGeoTemplate.clone(); s1.translate(hit1.x, hit1.y, hit1.z);
+                const s2 = sphereGeoTemplate.clone(); s2.translate(hit2.x, hit2.y, hit2.z);
+                latticeCylinders.push(s1, s2);
+            }
+        }
+    }
+
+    const eps = (maxX - minX) * 0.1;
+    const dirX = new THREE.Vector3(1, 0, 0);
+    const dirY = new THREE.Vector3(0, 1, 0);
+    const dirZ = new THREE.Vector3(0, 0, 1);
+
+    for (let y = minY; y <= maxY; y += spacing) {
+        for (let z = minZ; z <= maxZ; z += spacing) processRay(new THREE.Vector3(minX - eps, y, z), dirX);
+    }
+    for (let x = minX; x <= maxX; x += spacing) {
+        for (let z = minZ; z <= maxZ; z += spacing) processRay(new THREE.Vector3(x, minY - eps, z), dirY);
+    }
+    for (let x = minX; x <= maxX; x += spacing) {
+        for (let y = minY; y <= maxY; y += spacing) processRay(new THREE.Vector3(x, y, minZ - eps), dirZ);
+    }
+
+   
+    let mergedLatticeGeo = new THREE.BufferGeometry();
+    if (latticeCylinders.length > 0) {
+        mergedLatticeGeo = mergeGeometries(latticeCylinders);
+        mergedLatticeGeo.applyMatrix4(fwdLatticeMatrix);
+    }
+
+    const finalElements = [surfaceWireframeGeo];
+    if (latticeCylinders.length > 0) finalElements.push(mergedLatticeGeo);
+    
+    const finalMergedGeo = mergeGeometries(finalElements);
+    finalMergedGeo.computeVertexNormals();
+
+    return new THREE.Mesh(finalMergedGeo, material);
 }
 /**
  * Initializes the event listener for the Lattice Generation button.
@@ -630,3 +734,5 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
     }, 100); 
   });
 }
+
+
