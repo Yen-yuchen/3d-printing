@@ -434,14 +434,11 @@ export function createPrintableWireframe(
     thickness: number = 0.5
 ): THREE.Mesh {
     const geometriesToMerge: THREE.BufferGeometry[] = [];
-    const latticeCylinders: THREE.BufferGeometry[] = []; // 改回單純收集 Geometry
+    const latticeCylinders: THREE.BufferGeometry[] = []; 
 
-    // 共用的關節球模板
     const sphereGeoTemplate = new THREE.SphereGeometry(thickness * 1.05, 8, 8);
 
-    // ==========================================
-    // 1. 繪製外殼線框與關節球
-    // ==========================================
+   
     const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
     const positionAttribute = edgesGeometry.attributes.position;
     const p1 = new THREE.Vector3();
@@ -471,9 +468,7 @@ export function createPrintableWireframe(
     }
     const surfaceWireframeGeo = mergeGeometries(geometriesToMerge);
 
-    // ==========================================
-    // 2. 射線檢測與「錨點吸附 (Snapping)」
-    // ==========================================
+   
     const spacing = thickness * 8; 
     const fwdLatticeMatrix = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(Math.PI / 4, 0, Math.PI / 4));
     const invLatticeMatrix = fwdLatticeMatrix.clone().invert();
@@ -490,11 +485,9 @@ export function createPrintableWireframe(
     const minY = box.min.y; const maxY = box.max.y;
     const minZ = box.min.z; const maxZ = box.max.z;
 
-    // 核心輔助工具 1：精準生成任意兩點之間的管子
     function addCylinder(startPoint: THREE.Vector3, endPoint: THREE.Vector3) {
         const length = startPoint.distanceTo(endPoint);
-        if (length < thickness) return; // 忽略極短的碎屑
-        
+        if (length < thickness) return; 
         const cyl = new THREE.CylinderGeometry(thickness, thickness, length, 8, 1, false);
         cyl.translate(0, length / 2, 0);
         cyl.rotateX(Math.PI / 2);
@@ -505,7 +498,6 @@ export function createPrintableWireframe(
         latticeCylinders.push(cyl);
     }
 
-    // 核心輔助工具 2：尋找最近的外殼頂點 (錨點)
     function getSnappedPoint(intersect: THREE.Intersection): THREE.Vector3 {
         if (!intersect.face) return intersect.point;
         const vA = new THREE.Vector3().fromBufferAttribute(posAttr, intersect.face.a);
@@ -522,7 +514,6 @@ export function createPrintableWireframe(
         return vC;
     }
 
-    // 發射雷射光並建立連結
     function processRay(origin: THREE.Vector3, dir: THREE.Vector3) {
         raycaster.set(origin, dir);
         const intersects = raycaster.intersectObject(rayTarget, false);
@@ -540,18 +531,14 @@ export function createPrintableWireframe(
             const length = hit1.distanceTo(hit2);
             
             if (length > thickness * 2) { 
-                // 1. 建立筆直的內部主樑
                 addCylinder(hit1, hit2);
                 
-                // 2. 找到最近的兩個外殼線框關節點
                 const snap1 = getSnappedPoint(uniqueIntersects[i]);
                 const snap2 = getSnappedPoint(uniqueIntersects[i + 1]);
                 
-                // 3. 伸出樹根！將內部樑的端點死死綁在外殼關節上
                 addCylinder(hit1, snap1);
                 addCylinder(hit2, snap2);
                 
-                // 4. 在交界處補上一顆球，讓轉折處完美平滑
                 const s1 = sphereGeoTemplate.clone(); s1.translate(hit1.x, hit1.y, hit1.z);
                 const s2 = sphereGeoTemplate.clone(); s2.translate(hit2.x, hit2.y, hit2.z);
                 latticeCylinders.push(s1, s2);
@@ -559,7 +546,6 @@ export function createPrintableWireframe(
         }
     }
 
-    // 從三個方向掃描
     const eps = (maxX - minX) * 0.1;
     const dirX = new THREE.Vector3(1, 0, 0);
     const dirY = new THREE.Vector3(0, 1, 0);
@@ -575,13 +561,10 @@ export function createPrintableWireframe(
         for (let y = minY; y <= maxY; y += spacing) processRay(new THREE.Vector3(x, y, minZ - eps), dirZ);
     }
 
-    // ==========================================
-    // 3. 收尾組合 (沒有複雜的刪除運算了！)
-    // ==========================================
+   
     let mergedLatticeGeo = new THREE.BufferGeometry();
     if (latticeCylinders.length > 0) {
         mergedLatticeGeo = mergeGeometries(latticeCylinders);
-        // 將乾淨的內部網路與連接器，一併優雅地旋轉 45 度放回去！
         mergedLatticeGeo.applyMatrix4(fwdLatticeMatrix);
     }
 
