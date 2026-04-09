@@ -10,6 +10,7 @@
 * {
   box-sizing: border-box;
 }
+
 html,
 body {
   height: 100%;
@@ -89,8 +90,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 20px;
-  box-sizing: border-box;
-  overflow-y: scroll;
+  overflow-y: auto;
 }
 
 #panel-header {
@@ -200,6 +200,8 @@ input[type="range"] {
   position: relative;
 }
 
+/* Saved models */
+
 .saved-models-list {
   max-height: 220px;
   overflow-y: auto;
@@ -207,31 +209,31 @@ input[type="range"] {
   background: #1e1e1e;
   border-radius: 6px;
   padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.saved-model-item {
-  padding: 8px;
-  border-bottom: 1px solid #333;
+.saved-model-row {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  background-color: #3f7fcb;
+  color: #ffffff;
+  border: 1px solid #2d5f98;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+  transition: 0.2s;
 }
 
-.saved-model-item:last-child {
-  border-bottom: none;
+.saved-model-row:hover {
+  background-color: #4a8ddb;
 }
 
-.saved-model-item:hover {
-  background: #2a2a2a;
-}
-
-.saved-model-name {
-  font-weight: 600;
-  color: white;
-}
-
-.saved-model-meta {
-  font-size: 12px;
+.saved-model-empty {
   color: #aaa;
-  margin-top: 2px;
+  font-size: 12px;
+  padding: 8px;
 }
-
-

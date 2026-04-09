@@ -1,5 +1,5 @@
+/// <reference types="jest" />
 import { calcVonMises, stressAtPoint } from '../src/three/stressAnalysis';
-
 describe('Stress Analysis Function', () => {
   describe('calcVonMises()', () => {
     it('returns zero for an all-zero stress state', () => {

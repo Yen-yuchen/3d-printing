@@ -31,9 +31,14 @@ export function getTargetObject(
 ): THREE.Object3D {
   return state.currentModel ?? sceneManager.shape;
 }
-
-// Merges duplicate vertices in all meshes of an object to optimize geometry
-// Also stores the original geometry for later restoration if needed
+/**
+ * Pre-processes and optimizes a 3D object by traversing its meshes and merging coincident vertices.
+ * This is a critical topology repair step that converts raw 'polygon soups' (common in STL files) 
+ * into continuous, manifold geometries required for successful CSG boolean operations and FEA simulations.
+ * It also caches the optimized geometry to allow for non-destructive mesh reduction later.
+ * * @param {THREE.Object3D} object - The loaded 3D object or scene to be processed.
+ * @returns {void}
+ */
 export function mergeModelVertices(object: THREE.Object3D): void {
   traverseMeshes(object, (mesh) => {
     if (!mesh.geometry.isBufferGeometry) return;
@@ -52,8 +57,15 @@ export function mergeModelVertices(object: THREE.Object3D): void {
   });
 }
 
-// Removes the currently loaded model from the scene and frees up its memory
-export function clearCurrentModel(
+/**
+ * Safely unloads the current 3D model from the WebGL scene and forces GPU garbage collection.
+ * This is a critical memory management routine that prevents memory leaks and WebGL context loss 
+ * by ensuring all associated geometries, materials, and textures are permanently flushed from the VRAM
+ * before the JavaScript garbage collector clears the CPU references.
+ * * @param {ViewerState} state - The global application state object containing the active model.
+ * @param {SceneManager} sceneManager - The core scene manager handling the Three.js scene graph.
+ * @returns {void}
+ */export function clearCurrentModel(
   state: ViewerState,
   sceneManager: SceneManager,
 ): void {
@@ -101,8 +113,14 @@ export function applyScaleFromSlider(
   target.scale.set(factor, factor, factor);
 }
 
-// Toggles wireframe mode for all materials in an object
-// Works with both single materials and arrays of materials (multi-material objects)
+/**
+ * Recursively traverses a 3D object hierarchy and toggles the wireframe rendering mode on all underlying materials.
+ * This function robustly handles both single material assignments and multi-material arrays, 
+ * ensuring complex imported models (e.g., GLTF/OBJ) are safely updated without runtime errors.
+ * * @param {THREE.Object3D} object - The root Three.js object or scene graph to traverse.
+ * @param {boolean} enabled - The target wireframe state (true for wireframe, false for solid shading).
+ * @returns {void}
+ */
 export function setWireframe(object: THREE.Object3D, enabled: boolean): void {
   object.traverse((child: any) => {
     if (!child?.isMesh) return;
@@ -118,8 +136,14 @@ export function setWireframe(object: THREE.Object3D, enabled: boolean): void {
   });
 }
 
-// Applies wireframe display mode based on the wireframe toggle checkbox
-export function applyWireframe(
+/**
+ * Controller function that syncs the visual wireframe state of the active 3D model 
+ * with the corresponding HTML checkbox element in the user interface.
+ * * @param {ViewerState} state - The global application state containing active model references.
+ * @param {SceneManager} sceneManager - The manager handling the Three.js scene environment.
+ * @param {AppElements} elements - The DOM elements reference object containing the UI toggles.
+ * @returns {void}
+ */export function applyWireframe(
   state: ViewerState,
   sceneManager: SceneManager,
   elements: AppElements,
@@ -273,9 +297,16 @@ export function performSimplification(
   }, 50);
 }
 
-// Applies a color-based density heatmap to the mesh
-// Shows areas of high vertex density in red/warm colors and low density in blue/cool colors
-// Uses HSL color space: Hue ranges from 0 (red) to 0.66 (blue)
+/**
+ * Calculates and applies a topological density heatmap to the active 3D mesh.
+ * This algorithm evaluates localized mesh density by calculating the average area of the faces 
+ * connected to each vertex using vector cross products. The resulting scalar field is normalized 
+ * and mapped to an HSL color gradient, providing immediate visual feedback on mesh complexity.
+ * * - High Vertex Density (Small face area) ➔ Warm colors (Red / Hue: 0.0)
+ * - Low Vertex Density (Large face area)  ➔ Cool colors (Blue / Hue: 0.66)
+ * * @param {ViewerState} state - The global application state object containing the active model.
+ * @returns {void}
+ */
 export function applyDensityHeatmap(state: ViewerState): void {
   const mesh = getFirstMesh(state.currentModel);
   if (!mesh || !mesh.geometry.isBufferGeometry) return;
@@ -425,9 +456,17 @@ export function performSubdivision(
   setStatus(elements.statusEl, "Subdivision complete");
 }
 
-
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
+/**
+ * Generates a 3D-printable volumetric wireframe (lattice) from a base geometry using a strut-and-node approach.
+ * This function iterates through the topological edges and vertices of the input mesh, creating cylindrical struts 
+ * and spherical joints to ensure a continuous, manifold structure optimized for additive manufacturing.
+ * * @param {THREE.BufferGeometry} originalGeometry - The base surface geometry to extract the topology from.
+ * @param {THREE.Material} material - The physical material to apply to the final merged mesh.
+ * @param {number} [thickness=0.5] - The radius of the cylindrical struts. Joint spheres will be scaled to 105% of this value.
+ * @returns {THREE.Mesh} A single merged mesh representing the printable volumetric lattice.
+ */
 export function createPrintableWireframe(
     originalGeometry: THREE.BufferGeometry, 
     material: THREE.Material, 
@@ -576,10 +615,15 @@ export function createPrintableWireframe(
 
     return new THREE.Mesh(finalMergedGeo, material);
 }
-
-// ==========================================
-// 2. UI Binding: Button with "Restore" switching function
-// ==========================================
+/**
+ * Initializes the event listener for the Lattice Generation button.
+ * This function acts as a state toggle: it generates a 3D printable lattice wireframe 
+ * from the current model, or restores the original model if the lattice is currently active.
+ * * @param {any} state - The global application state object, containing `currentModel`.
+ * @param {any} sceneManager - The Three.js scene manager responsible for rendering and scene graph manipulation.
+ * @param {any} elements - DOM elements reference object (e.g., polyCountLabel, modelColorPicker).
+ * @returns {void}
+ */
 export function setupLatticeButton(state: any, sceneManager: any, elements: any) {
   const latticeBtn = document.getElementById('generateLatticeBtn') as HTMLButtonElement;
   
@@ -591,9 +635,7 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
       return;
     }
 
-    // ==========================================
-    // Mode 2: If it is already a lattice, perform "Restore"！
-    // ==========================================
+   
     if (state.currentModel.userData.isLattice) {
         // 1. Take out the original model from the treasure bag
         const originalModel = state.currentModel.userData.originalModel;

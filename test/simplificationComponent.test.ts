@@ -1,4 +1,6 @@
 
+import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+
 jest.mock('../src/three/meshOperations', () => ({
   performSimplification: (state: any, elements: any, targetType: string, value: number) => {
     const originalCount = state.currentModel.geometry.attributes.position.count;
