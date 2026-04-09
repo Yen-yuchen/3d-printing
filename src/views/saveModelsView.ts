@@ -3,6 +3,7 @@ import type { SavedModel } from "../services/modelService";
 const SAVED_MODELS_LIST_ID = "savedModelsList";
 
 type SavedModelOpenDetail = { modelId: number };
+type SavedModelDeleteDetail = { modelId: number; modelName: string };
 
 function getSavedModelsList(): HTMLDivElement {
   const list = document.getElementById(
@@ -36,9 +37,13 @@ export function renderSavedModels(models: SavedModel[]): void {
     row.dataset.modelId = String(model.model_id);
 
     const name = model.model_name?.trim() || `Model ${model.model_id}`;
-    row.textContent = `${name} (${model.file_format})`;
 
-    row.addEventListener("click", () => {
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "saved-model-open-btn";
+    openBtn.textContent = `${name} (${model.file_format})`;
+
+    openBtn.addEventListener("click", () => {
       window.dispatchEvent(
         new CustomEvent<SavedModelOpenDetail>("saved-model:open", {
           detail: { modelId: model.model_id },
@@ -46,6 +51,24 @@ export function renderSavedModels(models: SavedModel[]): void {
       );
     });
 
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "saved-model-delete-btn";
+    deleteBtn.textContent = "Delete";
+
+    deleteBtn.addEventListener("click", () => {
+      window.dispatchEvent(
+        new CustomEvent<SavedModelDeleteDetail>("saved-model:delete", {
+          detail: {
+            modelId: model.model_id,
+            modelName: name,
+          },
+        }),
+      );
+    });
+
+    row.appendChild(openBtn);
+    row.appendChild(deleteBtn);
     list.appendChild(row);
   }
 }

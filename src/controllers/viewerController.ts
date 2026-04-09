@@ -14,15 +14,15 @@ import {
 import {
   downloadSavedModelFile,
   fetchUserModels,
+  deleteModel,
 } from "../services/modelService";
 import { renderSavedModels } from "../views/saveModelsView";
 import { setStatus } from "../views/statusView";
 import { applySimulatedVonMises } from "../three/stressAnalysis";
 
 type SavedModelOpenDetail = { modelId: number };
-/**
- * Controller for handling viewer interactions and UI updates. Connects the viewer state, scene manager, and DOM elements to provide a responsive user experience.
- */
+type SavedModelDeleteDetail = { modelId: number; modelName: string };
+
 export class ViewerController {
   private readonly viewerState: ViewerState;
   private readonly elements: AppElements;
@@ -81,64 +81,57 @@ export class ViewerController {
     //   applyDensityHeatmap(this.viewerState);
     // });
 
-    this.elements.sxSlider?.addEventListener("input", (event) => {
-      //console.log("hello")
+    this.elements.sxSlider?.addEventListener("input", () => {
       if (this.elements.sxValue && this.elements.sxSlider) {
         this.elements.sxValue.textContent = this.elements.sxSlider.value;
       }
       applySimulatedVonMises(this.viewerState, this.sceneManager);
     });
-    this.elements.sySlider?.addEventListener("input", (event) => {
+
+    this.elements.sySlider?.addEventListener("input", () => {
       if (this.elements.syValue && this.elements.sySlider) {
         this.elements.syValue.textContent = this.elements.sySlider.value;
       }
       applySimulatedVonMises(this.viewerState, this.sceneManager);
     });
-    this.elements.szSlider?.addEventListener("input", (event) => {
+
+    this.elements.szSlider?.addEventListener("input", () => {
       if (this.elements.szValue && this.elements.szSlider) {
         this.elements.szValue.textContent = this.elements.szSlider.value;
       }
       applySimulatedVonMises(this.viewerState, this.sceneManager);
     });
-    this.elements.txySlider?.addEventListener("input", (event) => {
+
+    this.elements.txySlider?.addEventListener("input", () => {
       if (this.elements.txyValue && this.elements.txySlider) {
         this.elements.txyValue.textContent = this.elements.txySlider.value;
       }
-      console.log("a");
       applySimulatedVonMises(this.viewerState, this.sceneManager);
-      /*
-      MOVE SLIDER EVENT LISTENER CODE HERE!!
-      */
     });
-    this.elements.tyzSlider?.addEventListener("input", (event) => {
+
+    this.elements.tyzSlider?.addEventListener("input", () => {
       if (this.elements.tyzValue && this.elements.tyzSlider) {
         this.elements.tyzValue.textContent = this.elements.tyzSlider.value;
       }
-      console.log("b");
       applySimulatedVonMises(this.viewerState, this.sceneManager);
-      /*
-      MOVE SLIDER EVENT LISTENER CODE HERE!!
-      */
     });
-    this.elements.txzSlider?.addEventListener("input", (event) => {
+
+    this.elements.txzSlider?.addEventListener("input", () => {
       if (this.elements.txzValue && this.elements.txzSlider) {
         this.elements.txzValue.textContent = this.elements.txzSlider.value;
       }
-      console.log("c");
       applySimulatedVonMises(this.viewerState, this.sceneManager);
-      /*
-      MOVE SLIDER EVENT LISTENER CODE HERE!!
-      */
     });
+
     if (this.elements.shapeButtons) {
-      for (let button of this.elements.shapeButtons) {
-        button.addEventListener("click", (event) => {
+      for (const button of this.elements.shapeButtons) {
+        button.addEventListener("click", () => {
           this.sceneManager.changeShape(button.value);
         });
       }
     }
 
-    this.elements.loadCaseSelector?.addEventListener("change", (event) => {
+    this.elements.loadCaseSelector?.addEventListener("change", () => {
       const caseSelector = this.elements.loadCaseSelector;
       const caseValue = this.elements.loadCaseValue;
       if (caseValue && caseSelector) {
@@ -146,12 +139,11 @@ export class ViewerController {
           caseSelector.options[caseSelector.selectedIndex].text;
       }
     });
-    // Refresh list immediately on login/logout
+
     window.addEventListener("auth:changed", () => {
       void this.loadSavedModels();
     });
 
-    // Click on a saved model button -> download + load into viewer
     window.addEventListener("saved-model:open", (event) => {
       const detail = (event as CustomEvent<SavedModelOpenDetail>).detail;
       const modelId = detail?.modelId;
@@ -160,7 +152,16 @@ export class ViewerController {
       }
     });
 
-    // Refresh list after saving a model
+    window.addEventListener("saved-model:delete", (event) => {
+      const detail = (event as CustomEvent<SavedModelDeleteDetail>).detail;
+      const modelId = detail?.modelId;
+      const modelName = detail?.modelName ?? "this model";
+
+      if (Number.isFinite(modelId)) {
+        void this.deleteSavedModel(modelId, modelName);
+      }
+    });
+
     window.addEventListener("models:changed", () => {
       void this.loadSavedModels();
     });
@@ -189,6 +190,7 @@ export class ViewerController {
       renderSavedModels([]);
     }
   }
+
   private async openSavedModel(modelId: number): Promise<void> {
     const token = this.authState.token;
     if (!token) {
@@ -204,6 +206,30 @@ export class ViewerController {
     } catch (error) {
       console.error("Failed to open saved model:", error);
       setStatus(this.elements.statusEl, "Failed to load saved model.");
+    }
+  }
+
+  private async deleteSavedModel(
+    modelId: number,
+    modelName: string,
+  ): Promise<void> {
+    const token = this.authState.token;
+    if (!token) {
+      setStatus(this.elements.statusEl, "Please login first.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete "${modelName}"?`);
+    if (!confirmed) return;
+
+    try {
+      setStatus(this.elements.statusEl, `Deleting "${modelName}"...`);
+      await deleteModel(modelId, token);
+      setStatus(this.elements.statusEl, `Deleted "${modelName}".`);
+      window.dispatchEvent(new Event("models:changed"));
+    } catch (error) {
+      console.error("Failed to delete saved model:", error);
+      setStatus(this.elements.statusEl, "Failed to delete saved model.");
     }
   }
 }

@@ -39,6 +39,7 @@ export async function saveModel(
     body: formData,
   });
 }
+
 export type SavedModel = {
   model_id: number;
   user_id: number;
@@ -84,7 +85,6 @@ export async function downloadSavedModelFile(
 
   const blob = await response.blob();
 
-  // Try to get a filename from Content-Disposition; otherwise fall back.
   const disposition = response.headers.get("Content-Disposition") || "";
   const match = disposition.match(/filename="([^"]+)"/);
   const fileName = match?.[1] || `model-${modelId}.glb`;
@@ -92,4 +92,21 @@ export async function downloadSavedModelFile(
   return new File([blob], fileName, {
     type: blob.type || "application/octet-stream",
   });
+}
+
+export async function deleteModel(
+  modelId: number,
+  token: string,
+): Promise<void> {
+  const response = await fetch(`http://localhost:3001/api/models/${modelId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to delete model");
+  }
 }
