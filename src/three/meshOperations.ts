@@ -754,6 +754,9 @@ export function createPerforatedMesh(originalObject: THREE.Object3D) {
     const validMesh = targetMesh as THREE.Mesh;
 
     const baseBrush = new Brush(validMesh.geometry, validMesh.material);
+    validMesh.getWorldPosition(baseBrush.position);
+    validMesh.getWorldQuaternion(baseBrush.quaternion);
+    validMesh.getWorldScale(baseBrush.scale);
     baseBrush.updateMatrixWorld();
 
     const bbox = new THREE.Box3().setFromObject(validMesh);
@@ -827,9 +830,12 @@ export function createPerforatedMesh(originalObject: THREE.Object3D) {
 
     perforatedMesh.castShadow = true;
     perforatedMesh.receiveShadow = true;
-    perforatedMesh.position.copy(originalObject.position);
-    perforatedMesh.rotation.copy(originalObject.rotation);
-    perforatedMesh.scale.copy(originalObject.scale);
+    //perforatedMesh.position.copy(originalObject.position);
+    //perforatedMesh.rotation.copy(originalObject.rotation);
+    //perforatedMesh.scale.copy(originalObject.scale);
+    perforatedMesh.position.copy(resultBrush.position);
+    perforatedMesh.quaternion.copy(resultBrush.quaternion); 
+    perforatedMesh.scale.copy(resultBrush.scale);
 
     return perforatedMesh;
 }
