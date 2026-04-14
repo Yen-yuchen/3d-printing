@@ -19,7 +19,7 @@ import {
   traverseMeshes,
 } from "../utils/threeUtils";
 
-import { Brush, Evaluator, INTERSECTION, ADDITION } from 'three-bvh-csg';
+import { Brush, Evaluator, INTERSECTION, ADDITION, SUBTRACTION } from 'three-bvh-csg';
 
 // Initialize the simplify modifier for mesh reduction
 const simplifyModifier = new SimplifyModifier();
@@ -65,7 +65,8 @@ export function mergeModelVertices(object: THREE.Object3D): void {
  * * @param {ViewerState} state - The global application state object containing the active model.
  * @param {SceneManager} sceneManager - The core scene manager handling the Three.js scene graph.
  * @returns {void}
- */export function clearCurrentModel(
+ */
+export function clearCurrentModel(
   state: ViewerState,
   sceneManager: SceneManager,
 ): void {
@@ -736,3 +737,161 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
 }
 
 
+//////
+
+export function createPerforatedMesh(originalObject: THREE.Object3D) {
+    let targetMesh: THREE.Mesh | null = null;
+    originalObject.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh && !targetMesh) {
+            targetMesh = child as THREE.Mesh;
+        }
+    });
+
+    if (!targetMesh) {
+        throw new Error("cannot find a valid mesh!");
+    }
+
+    const validMesh = targetMesh as THREE.Mesh;
+
+    const baseBrush = new Brush(validMesh.geometry, validMesh.material);
+    baseBrush.updateMatrixWorld();
+
+    const bbox = new THREE.Box3().setFromObject(validMesh);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+    const center = new THREE.Vector3();
+    bbox.getCenter(center);
+
+   
+    const holeRadius = 0.08;   
+    const spacing = 0.5;        
+    
+    const maxDim = Math.max(size.x, size.y, size.z) + 10; 
+    const baseDrillGeo = new THREE.CylinderGeometry(holeRadius, holeRadius, maxDim, 16);
+    const drillsGeometries: THREE.BufferGeometry[] = [];
+
+    for (let x = bbox.min.x; x <= bbox.max.x; x += spacing) {
+        for (let z = bbox.min.z; z <= bbox.max.z; z += spacing) {
+            const drillY = baseDrillGeo.clone();
+            drillY.translate(x, center.y, z);
+            drillsGeometries.push(drillY);
+        }
+    }
+
+    for (let y = bbox.min.y; y <= bbox.max.y; y += spacing) {
+        for (let z = bbox.min.z; z <= bbox.max.z; z += spacing) {
+            const drillX = baseDrillGeo.clone();
+            drillX.rotateZ(Math.PI / 2); 
+            drillX.translate(center.x, y, z);
+            drillsGeometries.push(drillX);
+        }
+    }
+
+    for (let x = bbox.min.x; x <= bbox.max.x; x += spacing) {
+        for (let y = bbox.min.y; y <= bbox.max.y; y += spacing) {
+            const drillZ = baseDrillGeo.clone();
+            drillZ.rotateX(Math.PI / 2); 
+            drillZ.translate(x, y, center.z);
+            drillsGeometries.push(drillZ);
+        }
+    }
+
+    if (drillsGeometries.length === 0) {
+        throw new Error("model is too small for the given spacing, no drills generated!");
+    }
+
+    const mergedDrillGeo = BufferGeometryUtils.mergeGeometries(drillsGeometries);
+    
+    const drillMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const drillBrush = new Brush(mergedDrillGeo, drillMat);
+    drillBrush.updateMatrixWorld();
+
+    const evaluator = new Evaluator();
+    evaluator.useGroups = true;
+    const resultBrush = evaluator.evaluate(baseBrush, drillBrush, SUBTRACTION);
+
+    let materialArray: THREE.Material[] = [];
+    if (Array.isArray(validMesh.material)) {
+        materialArray = [...validMesh.material, drillMat];
+    } else {
+        materialArray = [validMesh.material as THREE.Material, drillMat];
+    }
+
+    const perforatedMesh = new THREE.Mesh(resultBrush.geometry, materialArray);
+    perforatedMesh.geometry.computeVertexNormals();
+
+    materialArray.forEach(m => {
+        m.side = THREE.DoubleSide;
+        m.needsUpdate = true;
+    });
+
+    perforatedMesh.castShadow = true;
+    perforatedMesh.receiveShadow = true;
+    perforatedMesh.position.copy(originalObject.position);
+    perforatedMesh.rotation.copy(originalObject.rotation);
+    perforatedMesh.scale.copy(originalObject.scale);
+
+    return perforatedMesh;
+}
+export function setupPerforationButton(viewerState: ViewerState, sceneManager: SceneManager) {
+
+    let isPerforated = false;
+    let originalMesh: THREE.Object3D | null = null;
+    let perforatedMesh: THREE.Mesh | null = null;
+
+    document.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement;
+
+        if (target && target.id === 'btn-perforate') {
+            const scene = sceneManager.scene;
+
+           
+            if (isPerforated && originalMesh && perforatedMesh) {
+                console.log("restoring original model...");
+                
+                scene.remove(perforatedMesh);
+                
+                scene.add(originalMesh);
+                viewerState.currentModel = originalMesh as THREE.Mesh;
+                target.innerText = "automatic perforation";
+                
+                isPerforated = false;
+                
+                return; 
+            }
+
+           
+            const currentMesh = viewerState.currentModel; 
+
+            if (!currentMesh) {
+                alert("Please load a model first!"); 
+                return;
+            }
+
+            
+            target.innerText = "Processing...";
+            
+            setTimeout(() => {
+                try {
+                    originalMesh = currentMesh;
+
+                    perforatedMesh = createPerforatedMesh(currentMesh as THREE.Mesh);
+
+                    scene.remove(originalMesh);
+                    scene.add(perforatedMesh);
+                    viewerState.currentModel = perforatedMesh;
+                    
+                    isPerforated = true;
+                    target.innerText = "Restore Original Model"; 
+                    
+                    console.log("perforation completed successfully!");
+                    
+                } catch (error) {
+                    console.error("failed perforation：", error);
+                    alert("Perforation failed. The model might be too complex.");
+                    target.innerText = "automatic perforation"; 
+                }
+            }, 50);
+        }
+    });
+}

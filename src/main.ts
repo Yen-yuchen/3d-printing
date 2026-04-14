@@ -16,6 +16,7 @@ import {
   applyScaleFromSlider,
   applyWireframe,
 } from "./three/meshOperations";
+import { setupPerforationButton } from './three/meshOperations';
 
 const authState = createAuthState();
 const viewerState = createViewerState();
@@ -71,3 +72,5 @@ applyWireframe(viewerState, sceneManager, elements);
 sceneManager.observeResize();
 sceneManager.startAnimationLoop();
 setupLatticeButton(viewerState, sceneManager, elements);
+
+setupPerforationButton(viewerState, sceneManager);
