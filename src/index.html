@@ -556,16 +556,20 @@
       const header = document.getElementById("panel-header");
 
       buttons.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          buttons.forEach((b) => b.classList.remove("active"));
-          groups.forEach((g) => g.classList.remove("active"));
+          if(btn instanceof HTMLElement){
+            btn.addEventListener("click", () => {
+              buttons.forEach((b) => b.classList.remove("active"));
+              groups.forEach((g) => g.classList.remove("active"));
 
-          btn.classList.add("active");
-          const targetId = btn.getAttribute("data-target");
-          document.getElementById(targetId).classList.add("active");
+              btn.classList.add("active");
+              //const targetId = btn.getAttribute("data-target");
+              const targetId = btn.dataset.target;
+              document.getElementById(targetId).classList.add("active");
 
-          header.textContent = btn.querySelector("span").innerText;
-        });
+              header.textContent = btn.querySelector("span").innerText;
+            });
+          }
+        
       });
 
       const scaleInput = document.getElementById("scale");
