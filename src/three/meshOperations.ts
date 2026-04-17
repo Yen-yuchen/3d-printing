@@ -19,7 +19,7 @@ import {
   traverseMeshes,
 } from "../utils/threeUtils";
 
-import { Brush, Evaluator, INTERSECTION, ADDITION, SUBTRACTION } from 'three-bvh-csg';
+import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 
 // Initialize the simplify modifier for mesh reduction
 const simplifyModifier = new SimplifyModifier();
@@ -221,9 +221,10 @@ export function performSimplification(
 
   // Defer processing to allow UI to update status message
   setTimeout(() => {
+    if (!state.currentModel) return;
     let currentTotalVertices = 0;
 
-    traverseMeshes(state.currentModel!, (mesh) => {
+    traverseMeshes(state.currentModel, (mesh) => {
       // Save original geometry if not already saved
       if (!mesh.userData.originalGeometry) {
         mesh.userData.originalGeometry = mesh.geometry.clone();
@@ -232,7 +233,7 @@ export function performSimplification(
       const originalGeometry = mesh.userData
         .originalGeometry as THREE.BufferGeometry;
       const originalCount = originalGeometry.attributes.position.count;
-      //let targetCount = 0;
+      
 
       let keepCount = 0;
 
@@ -310,7 +311,7 @@ export function performSimplification(
  */
 export function applyDensityHeatmap(state: ViewerState): void {
   const mesh = getFirstMesh(state.currentModel);
-  if (!mesh || !mesh.geometry.isBufferGeometry) return;
+  if (!mesh?.geometry?.isBufferGeometry) return;
 
   const position = mesh.geometry.attributes.position;
   const index = mesh.geometry.index;
@@ -377,11 +378,11 @@ export function applyDensityHeatmap(state: ViewerState): void {
   for (let i = 0; i < vertexCount; i++) {
     // Normalize density to 0-1 range
     const t =
-      maxDensity !== minDensity
-        ? (density[i] - minDensity) / (maxDensity - minDensity)
-        : 0;
+      maxDensity === minDensity
+        ? 0
+        : (density[i] - minDensity) / (maxDensity - minDensity);
     // HSL color: high density (t=1) = red, low density (t=0) = blue
-    color.setHSL(t * 0.66, 1.0, 0.5);
+    color.setHSL(t * 0.66, 1, 0.5);
     colors.push(color.r, color.g, color.b);
   }
 
@@ -560,8 +561,8 @@ export function createPrintableWireframe(
         
         const uniqueIntersects = [];
         for (let i = 0; i < intersects.length; i++) {
-            if (i === 0 || intersects[i].distance - uniqueIntersects[uniqueIntersects.length - 1].distance > 0.01) {
-                uniqueIntersects.push(intersects[i]);
+          if (i === 0 || intersects[i].distance - (uniqueIntersects.at(-1)?.distance ?? 0) > 0.01) {                
+              uniqueIntersects.push(intersects[i]);
             }
         }
 
@@ -661,7 +662,7 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
         // 5. Update vertex count label
         if (elements.polyCountLabel) {
             const origMesh = getFirstMesh(originalModel);
-            if (origMesh && origMesh.geometry) {
+            if (origMesh ?.geometry) {
                 elements.polyCountLabel.textContent = `Current Vertices: ${origMesh.geometry.attributes.position.count}`;
             }
         }
@@ -678,7 +679,7 @@ export function setupLatticeButton(state: any, sceneManager: any, elements: any)
       try {
         const currentMesh = getFirstMesh(state.currentModel);
         
-        if (!currentMesh || !currentMesh.geometry) {
+        if (!currentMesh?.geometry) {
             alert("Cannot find geometry in this model.");
             return;
         }
@@ -830,9 +831,6 @@ export function createPerforatedMesh(originalObject: THREE.Object3D) {
 
     perforatedMesh.castShadow = true;
     perforatedMesh.receiveShadow = true;
-    //perforatedMesh.position.copy(originalObject.position);
-    //perforatedMesh.rotation.copy(originalObject.rotation);
-    //perforatedMesh.scale.copy(originalObject.scale);
     perforatedMesh.position.copy(resultBrush.position);
     perforatedMesh.quaternion.copy(resultBrush.quaternion); 
     perforatedMesh.scale.copy(resultBrush.scale);
@@ -848,7 +846,7 @@ export function setupPerforationButton(viewerState: ViewerState, sceneManager: S
     document.addEventListener('click', (event) => {
         const target = event.target as HTMLElement;
 
-        if (target && target.id === 'btn-perforate') {
+        if (target?.id === 'btn-perforate') {
             const scene = sceneManager.scene;
 
            

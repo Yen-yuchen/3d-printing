@@ -53,7 +53,7 @@ function buildExportScene(state: ViewerState): THREE.Scene {
       ? mesh.material.map((material) => {
           const cloned = material.clone();
           if ("wireframe" in cloned) {
-            (cloned as any).wireframe = false;
+            cloned .wireframe = false;
           }
           return cloned;
         })
