@@ -1,5 +1,5 @@
-import path from "path";
-import fs from "fs";
+import path from "node:path";
+import fs from "node:fs";
 import { Router } from "express";
 import multer from "multer";
 import { pool } from "../db";
@@ -337,13 +337,14 @@ api.get("/models", requireAuth, async (req: any, res: any) => {
  * Storage layout:
  * storage/<userId>/<projectId>/<modelName>.<ext>
  */
+
 api.post(
   "/models",
   requireAuth,
   memoryUpload.single("file"),
   async (req: any, res: any) => {
     const userId = Number(req.user?.user_id);
-    const file = req.file as any | undefined;
+    const file = req.file;
 
     if (!file) {
       return res.status(400).json({ error: "file required" });
@@ -375,9 +376,9 @@ api.post(
      * Sanitize all path components before writing to disk.
      * This reduces risk from unsafe characters in user-provided values.
      */
-    const safeUserId = String(userId).replace(/[^a-zA-Z0-9._-]/g, "_");
-    const safeProjectId = projectId.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const safeModelName = modelName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const safeUserId = String(userId).replaceAll(/[^a-zA-Z0-9._-]/g, "_");
+    const safeProjectId = projectId.replaceAll(/[^a-zA-Z0-9._-]/g, "_");
+    const safeModelName = modelName.replaceAll(/[^a-zA-Z0-9._-]/g, "_");
     const safeFileName = `${safeModelName}.${ext}`;
 
     const saveDir = path.join(STORAGE_DIR, safeUserId, safeProjectId);
