@@ -117,41 +117,50 @@ export class AuthController {
       const name = this.elements.newUserName?.value?.trim();
       const email = this.elements.newUserEmail?.value?.trim();
       if (!name || !email) {
-        if (this.elements.createUserStatus) {
-          this.elements.createUserStatus.textContent =
-            "Name and email required";
-        }
+        // if (this.elements.createUserStatus) {
+        //   this.elements.createUserStatus.textContent =
+        //     "Name and email required";
+        // }
+        this.updateCreateUserStatus("Name and email required");
         return;
       }
 
-      if (this.elements.createUserStatus) {
-        this.elements.createUserStatus.textContent = "Creating...";
-      }
+      // if (this.elements.createUserStatus) {
+      //   this.elements.createUserStatus.textContent = "Creating...";
+      // }
+      this.updateCreateUserStatus("Creating...");
 
       try {
         const result = await createUser(name, email);
         if (result.status === 201 && result.data) {
-          if (this.elements.createUserStatus) {
-            this.elements.createUserStatus.textContent = `Created: ${result.data.email}`;
-          }
+          // if (this.elements.createUserStatus) {
+          //   this.elements.createUserStatus.textContent = `Created: ${result.data.email}`;
+          // }
+          this.updateCreateUserStatus(`Created ${result.data.email}`);
           if (this.elements.newUserName) this.elements.newUserName.value = "";
           if (this.elements.newUserEmail) this.elements.newUserEmail.value = "";
         } else if (result.status === 409) {
-          if (this.elements.createUserStatus) {
-            this.elements.createUserStatus.textContent = "Email already exists";
-          }
+          // if (this.elements.createUserStatus) {
+          //   this.elements.createUserStatus.textContent = "Email already exists";
+          // }
+          this.updateCreateUserStatus("Email already exists");
         } else if (this.elements.createUserStatus) {
           this.elements.createUserStatus.textContent = `Failed: ${result.status} ${result.text}`;
         }
       } catch (error) {
         console.error("Create user failed", error);
-        if (this.elements.createUserStatus) {
-          this.elements.createUserStatus.textContent = "Create request failed";
-        }
+        // if (this.elements.createUserStatus) {
+        //   this.elements.createUserStatus.textContent = "Create request failed";
+        // }
+        this.updateCreateUserStatus("Create request failed");
       }
     });
   }
-
+  private updateCreateUserStatus(newValue: string ) {
+    if(this.elements.createUserStatus){
+      this.elements.createUserStatus.textContent = newValue;
+    }
+  }
   /**
    * Re-renders authentication-related UI and updates save button state.
    *
