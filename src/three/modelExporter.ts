@@ -23,7 +23,7 @@ export async function uploadModelToServer(
     formData.append("model_id", String(modelId));
   }
 
-  const response = await fetch("http://localhost:3001/api/models", {
+  const response = await fetch("/api/models", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -74,7 +74,7 @@ function buildExportScene(state: ViewerState): THREE.Scene {
 }
 /**
  * Packages the currently modified 3D model and exports it to the user's local machine.
- * This function builds an isolated export scene and utilizes Three.js exporters to generate 
+ * This function builds an isolated export scene and utilizes Three.js exporters to generate
  * either a binary glTF (.glb) or a standard Wavefront (.obj) file.
  *
  * @param state - The current viewer state containing the `currentModel` ready for export.
@@ -132,7 +132,7 @@ export function exportCorrectedModel(
  * @param fileName - The name for the saved file.
  * @param token - The authentication token for the API request.
  * @param onStatus - A callback function to report save progress or errors.
- * @returns 
+ * @returns
  */
 export function saveModelLocally(
   state: ViewerState,
