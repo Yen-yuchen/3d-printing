@@ -98,7 +98,7 @@ export async function deleteModel(
   modelId: number,
   token: string,
 ): Promise<void> {
-  const response = await fetch(`http://localhost:3001/api/models/${modelId}`, {
+  const response = await fetch(`/api/models/${modelId}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
