@@ -48,7 +48,7 @@ export type SavedModel = {
 };
 
 export async function fetchUserModels(token: string): Promise<SavedModel[]> {
-  const response = await fetch("http://localhost:3001/api/models", {
+  const response = await fetch("/api/models", {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -67,15 +67,12 @@ export async function downloadSavedModelFile(
   modelId: number,
   token: string,
 ): Promise<File> {
-  const response = await fetch(
-    `http://localhost:3001/api/models/${modelId}/file`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+  const response = await fetch(`/api/models/${modelId}/file`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
-  );
+  });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
