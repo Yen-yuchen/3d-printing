@@ -39,6 +39,7 @@ export async function saveModel(
     body: formData,
   });
 }
+
 export type SavedModel = {
   model_id: number;
   user_id: number;
@@ -89,4 +90,21 @@ export async function downloadSavedModelFile(
   return new File([blob], fileName, {
     type: blob.type || "application/octet-stream",
   });
+}
+
+export async function deleteSavedModel(
+  modelId: number,
+  token: string,
+): Promise<void> {
+  const response = await fetch(`/api/models/${modelId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to delete saved model");
+  }
 }

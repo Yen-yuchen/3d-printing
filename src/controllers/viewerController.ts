@@ -13,6 +13,7 @@ import {
 } from "../three/meshOperations";
 import {
   downloadSavedModelFile,
+  deleteSavedModel,
   fetchUserModels,
 } from "../services/modelService";
 import { renderSavedModels } from "../views/saveModelsView";
@@ -20,6 +21,7 @@ import { setStatus } from "../views/statusView";
 import { applySimulatedVonMises } from "../three/stressAnalysis";
 
 type SavedModelOpenDetail = { modelId: number };
+type SavedModelDeleteDetail = { modelId: number; modelName: string };
 /**
  * Controller for handling viewer interactions and UI updates. Connects the viewer state, scene manager, and DOM elements to provide a responsive user experience.
  */
@@ -160,6 +162,16 @@ export class ViewerController {
       }
     });
 
+    window.addEventListener("saved-model:delete", (event) => {
+      const detail = (event as CustomEvent<SavedModelDeleteDetail>).detail;
+      const modelId = detail?.modelId;
+      const modelName = detail?.modelName;
+
+      if (Number.isFinite(modelId)) {
+        void this.handleDeleteSavedModel(modelId, modelName);
+      }
+    });
+
     // Refresh list after saving a model
     window.addEventListener("models:changed", () => {
       void this.loadSavedModels();
@@ -204,6 +216,46 @@ export class ViewerController {
     } catch (error) {
       console.error("Failed to open saved model:", error);
       setStatus(this.elements.statusEl, "Failed to load saved model.");
+    }
+  }
+
+  private async handleDeleteSavedModel(
+    modelId: number,
+    modelName: string,
+  ): Promise<void> {
+    const token = this.authState.token;
+
+    if (!token) {
+      setStatus(this.elements.statusEl, "Please login first.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${modelName}"?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setStatus(this.elements.statusEl, `Deleting "${modelName}"...`);
+      await deleteSavedModel(modelId, token);
+
+      /**
+       * If the currently loaded model was the one deleted from the server,
+       * clear the saved-record link so future saves create a new record.
+       */
+      if (this.viewerState.currentModelId === modelId) {
+        this.viewerState.currentModelId = null;
+      }
+
+      setStatus(this.elements.statusEl, `Deleted "${modelName}".`);
+
+      window.dispatchEvent(new Event("models:changed"));
+    } catch (error) {
+      console.error("Failed to delete saved model:", error);
+      setStatus(this.elements.statusEl, "Failed to delete saved model.");
     }
   }
 }

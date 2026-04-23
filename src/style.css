@@ -237,3 +237,51 @@ input[type="range"] {
   font-size: 12px;
   padding: 8px;
 }
+
+.saved-model-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  border-radius: 6px;
+}
+
+.saved-model-open-btn {
+  flex: 1;
+  min-height: 38px;
+  padding: 8px 10px;
+  background-color: #3f7fcb;
+  color: #ffffff;
+  border: 1px solid #2d5f98;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  transition: 0.2s;
+}
+
+.saved-model-open-btn:hover {
+  background-color: #4a8ddb;
+}
+
+.saved-model-delete-btn {
+  min-width: 80px;
+  min-height: 38px;
+  padding: 8px 10px;
+  background-color: #a33a3a;
+  color: #ffffff;
+  border: 1px solid #7f2b2b;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.2s;
+}
+
+.saved-model-delete-btn:hover {
+  background-color: #bd4545;
+}
