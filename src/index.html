@@ -319,13 +319,12 @@
             <button id="btnSubdivision" class="btn-tool" style="width: 100%">
               <i class="fa-solid fa-expand"></i> Apply Subdivision
             </button>
-            
+            <!--
             <label class="label-title">Checkpoint</label>
             <div style="display: flex; gap: 5px">
               <button id="btnSaveModel" class="btn-tool" style="flex: 1">
                 <i class="fa-solid fa-floppy-disk"></i> Save
               </button>
-              
               <button
                 id="btnRestoreCheckpoint"
                 class="btn-tool"
@@ -344,7 +343,7 @@
             >
               <i class=""></i> Show/Hide Overlay
             </button>
-            
+            -->
             <div
               id="checkpointStatus"
               style="
@@ -392,25 +391,54 @@
           <div class="control-group">
             <button id="resetCam" class="btn-tool">Reset Camera</button>
           </div>
-          <button id="btnCube" class="btn-tool shape-buttons" style="flex: 1" value="cube">
-                 Cube
+          <button
+            id="btnCube"
+            class="btn-tool shape-buttons"
+            style="flex: 1"
+            value="cube"
+          >
+            Cube
           </button>
-          <button id="btnCylinder" class="btn-tool shape-buttons" style="flex: 1" value="cylinder">
-                 Cylinder
+          <button
+            id="btnCylinder"
+            class="btn-tool shape-buttons"
+            style="flex: 1"
+            value="cylinder"
+          >
+            Cylinder
           </button>
-          <button id="btnSphere" class="btn-tool shape-buttons" style="flex: 1" value="sphere">
-                 Sphere
+          <button
+            id="btnSphere"
+            class="btn-tool shape-buttons"
+            style="flex: 1"
+            value="sphere"
+          >
+            Sphere
           </button>
-          <button id="btnBeam" class="btn-tool shape-buttons" style="flex: 1" value="beam">
-                 Beam
+          <button
+            id="btnBeam"
+            class="btn-tool shape-buttons"
+            style="flex: 1"
+            value="beam"
+          >
+            Beam
           </button>
-          <button id="btnPlate" class="btn-tool shape-buttons" style="flex: 1" value="plate">
-                 Plate
+          <button
+            id="btnPlate"
+            class="btn-tool shape-buttons"
+            style="flex: 1"
+            value="plate"
+          >
+            Plate
           </button>
-          <button id="btnBracket" class="btn-tool shape-buttons" style="flex: 1" value="bracket">
-                 Bracket
+          <button
+            id="btnBracket"
+            class="btn-tool shape-buttons"
+            style="flex: 1"
+            value="bracket"
+          >
+            Bracket
           </button>
-
         </div>
 
         <div id="panel-analysis" class="tool-group">
@@ -431,16 +459,27 @@
             >
               <i class=""></i> Show Von Mises Stress
             </button>
-            
-            <div class="control-group" style="margin-bottom: 20px;">
-  <button id="generateLatticeBtn" style="width: 100%; padding: 8px; cursor: pointer;">
-    Generate Lattice Wireframe
-  </button>
-  <button id="btn-perforate" style="width: 100%; padding: 8px; cursor: pointer;">automatic perforation</button>
-</div>
+
+            <div class="control-group" style="margin-bottom: 20px">
+              <button
+                id="generateLatticeBtn"
+                style="width: 100%; padding: 8px; cursor: pointer"
+              >
+                Generate Lattice Wireframe
+              </button>
+              <button
+                id="btn-perforate"
+                style="width: 100%; padding: 8px; cursor: pointer"
+              >
+                automatic perforation
+              </button>
+            </div>
             <div class="section">
-              <div class="field" style="margin-top:10px;">
-                <label>Load Case <span class="val" id="load-case-val">Tensile</span></label>
+              <div class="field" style="margin-top: 10px">
+                <label
+                  >Load Case
+                  <span class="val" id="load-case-val">Tensile</span></label
+                >
                 <select id="load-case">
                   <option value="tensile">Tensile</option>
                   <option value="bending">Bending</option>
@@ -451,35 +490,96 @@
               </div>
 
               <div class="field">
-                <label>σ_x (MPa) <span class="val" id="sx-val">100</span></label>
-                <input type="range" id="sigma-x" min="-500" max="500" value="100" oninput="document.getElementById('sx-val').textContent=this.value;">
+                <label
+                  >σ_x (MPa) <span class="val" id="sx-val">100</span></label
+                >
+                <input
+                  type="range"
+                  id="sigma-x"
+                  min="-500"
+                  max="500"
+                  value="100"
+                  oninput="
+                    document.getElementById('sx-val').textContent = this.value
+                  "
+                />
               </div>
 
               <div class="field">
                 <label>σ_y (MPa) <span class="val" id="sy-val">50</span></label>
-                <input type="range" id="sigma-y" min="-500" max="500" value="50" oninput="document.getElementById('sy-val').textContent=this.value;">
+                <input
+                  type="range"
+                  id="sigma-y"
+                  min="-500"
+                  max="500"
+                  value="50"
+                  oninput="
+                    document.getElementById('sy-val').textContent = this.value
+                  "
+                />
               </div>
 
               <div class="field">
                 <label>σ_z (MPa) <span class="val" id="sz-val">20</span></label>
-                <input type="range" id="sigma-z" min="-500" max="500" value="20" oninput="document.getElementById('sz-val').textContent=this.value;">
+                <input
+                  type="range"
+                  id="sigma-z"
+                  min="-500"
+                  max="500"
+                  value="20"
+                  oninput="
+                    document.getElementById('sz-val').textContent = this.value
+                  "
+                />
               </div>
 
               <div class="field">
-                <label>τ_xy (MPa) <span class="val" id="txy-val">30</span></label>
-                <input type="range" id="tau-xy" min="-300" max="300" value="30" oninput="document.getElementById('txy-val').textContent=this.value;">
+                <label
+                  >τ_xy (MPa) <span class="val" id="txy-val">30</span></label
+                >
+                <input
+                  type="range"
+                  id="tau-xy"
+                  min="-300"
+                  max="300"
+                  value="30"
+                  oninput="
+                    document.getElementById('txy-val').textContent = this.value
+                  "
+                />
               </div>
 
               <div class="field">
-                <label>τ_yz (MPa) <span class="val" id="tyz-val">15</span></label>
-                <input type="range" id="tau-yz" min="-300" max="300" value="15" oninput="document.getElementById('tyz-val').textContent=this.value;">
+                <label
+                  >τ_yz (MPa) <span class="val" id="tyz-val">15</span></label
+                >
+                <input
+                  type="range"
+                  id="tau-yz"
+                  min="-300"
+                  max="300"
+                  value="15"
+                  oninput="
+                    document.getElementById('tyz-val').textContent = this.value
+                  "
+                />
               </div>
 
               <div class="field">
-                <label>τ_xz (MPa) <span class="val" id="txz-val">10</span></label>
-                <input type="range" id="tau-xz" min="-300" max="300" value="10" oninput="document.getElementById('txz-val').textContent=this.value;">
+                <label
+                  >τ_xz (MPa) <span class="val" id="txz-val">10</span></label
+                >
+                <input
+                  type="range"
+                  id="tau-xz"
+                  min="-300"
+                  max="300"
+                  value="10"
+                  oninput="
+                    document.getElementById('txz-val').textContent = this.value
+                  "
+                />
               </div>
-
             </div>
 
             <div style="font-size: 10px; color: #888; margin-top: 5px">
@@ -557,20 +657,19 @@
       const header = document.getElementById("panel-header");
 
       buttons.forEach((btn) => {
-          if(btn instanceof HTMLElement){
-            btn.addEventListener("click", () => {
-              buttons.forEach((b) => b.classList.remove("active"));
-              groups.forEach((g) => g.classList.remove("active"));
+        if (btn instanceof HTMLElement) {
+          btn.addEventListener("click", () => {
+            buttons.forEach((b) => b.classList.remove("active"));
+            groups.forEach((g) => g.classList.remove("active"));
 
-              btn.classList.add("active");
-              //const targetId = btn.getAttribute("data-target");
-              const targetId = btn.dataset.target;
-              document.getElementById(targetId).classList.add("active");
+            btn.classList.add("active");
+            //const targetId = btn.getAttribute("data-target");
+            const targetId = btn.dataset.target;
+            document.getElementById(targetId).classList.add("active");
 
-              header.textContent = btn.querySelector("span").innerText;
-            });
-          }
-        
+            header.textContent = btn.querySelector("span").innerText;
+          });
+        }
       });
 
       const scaleInput = document.getElementById("scale");

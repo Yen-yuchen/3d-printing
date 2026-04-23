@@ -4,6 +4,12 @@ import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter.js";
 import type { ViewerState } from "../state/viewerState";
 import { downloadFile } from "../utils/fileUtils";
 
+import * as THREE from "three";
+import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter.js";
+import type { ViewerState } from "../state/viewerState";
+import { downloadFile } from "../utils/fileUtils";
+
 export async function uploadModelToServer(
   fileData: Blob,
   fileName: string,
@@ -53,7 +59,7 @@ function buildExportScene(state: ViewerState): THREE.Scene {
       ? mesh.material.map((material) => {
           const cloned = material.clone();
           if ("wireframe" in cloned) {
-            cloned .wireframe = false;
+            (cloned as any).wireframe = false;
           }
           return cloned;
         })
